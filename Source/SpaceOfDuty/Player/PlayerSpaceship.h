@@ -4,9 +4,6 @@
 #include "GameFramework/Pawn.h"
 #include "PlayerSpaceship.generated.h"
 
-class UInputAction;
-class UInputMappingContext;
-
 UCLASS()
 class SPACEOFDUTY_API APlayerSpaceship : public APawn
 {
@@ -23,14 +20,52 @@ protected:
 
 private:
 	
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAcess = "true"))
-	UInputMappingContext* DefaultMappingContext;
+	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess = "true"))
+	class UStaticMeshComponent* SpaceshipMesh;
 
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAcess = "true"))
+	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess = "true"))
+	class UCameraComponent* SpaceshipCamera;
+
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	class UInputMappingContext* DefaultMappingContext;
+
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	class UInputAction* ForwardAction;
 
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAcess = "true"))
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	class UInputAction* LookAction;
+
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	float MaxTimeSinceLastLookInput = 0.1f;
+
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	float MaxSpaceshipRoll = 25.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	float SpaceshipRollInterpSpeed = 4.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	float SpaceshipRollSpeed = 30.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	float MaxTimeSinceLastMoveInput = 0.2f;
+
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	float SpaceshipMovementInterpSpeed = 4.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	float MinSpaceshipSpeed = 10.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	float YawRotationSpeed = 75.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	float PitchRotationSpeed = 40.0f;
+
+	float TimeSinceLastLookInput = 0.0f;
+	float TimeSinceLastMoveInput = 0.0f;
+	float CurrentSpaceshipSpeed;
+	float DefaultSpaceshipRoll = 0.0f;
 
 	void Move(const struct FInputActionValue& Value);
 	void Look(const struct FInputActionValue& Value);
