@@ -3,22 +3,36 @@
 #include "EnhancedInputComponent.h" 
 #include "Camera/CameraComponent.h" 
 
+#include "GameFramework/SpringArmComponent.h"
+
 APlayerSpaceship::APlayerSpaceship()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationRoll = false;
+
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 
+	SpaceshipSpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
+	SpaceshipSpringArm->SetupAttachment(RootComponent);
+
+	SpaceshipSpringArm->bUsePawnControlRotation = false;
+	SpaceshipSpringArm->bInheritPitch = true;
+	SpaceshipSpringArm->bInheritYaw = true;
+	SpaceshipSpringArm->bInheritRoll = false;
+
+	//TODO: Enable when the turbo is implemented
+	//SpaceshipSpringArm->bEnableCameraLag = true;
+	//SpaceshipSpringArm->CameraLagSpeed = 8.f;
+
 	SpaceshipCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-	SpaceshipCamera->SetupAttachment(RootComponent);
+	SpaceshipCamera->SetupAttachment(SpaceshipSpringArm);
 	SpaceshipCamera->bUsePawnControlRotation = false;
 
 	SpaceshipMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ShipMesh"));
 	SpaceshipMesh->SetupAttachment(RootComponent);
-
-	bUseControllerRotationYaw = true;
-	bUseControllerRotationPitch = true;
-	bUseControllerRotationRoll = false;
 
 	DefaultSpaceshipRoll = SpaceshipMesh->GetRelativeRotation().Roll;
 	CurrentSpaceshipSpeed = MinSpaceshipSpeed;
@@ -43,15 +57,10 @@ void APlayerSpaceship::Move(const FInputActionValue& Value)
 
 		CurrentSpaceshipSpeed = FMath::FInterpTo(
 			CurrentSpaceshipSpeed, 
-			MovementVector.Y * 2000.0f, 
+			MovementVector.Y * MaxSpaceshipSpeed,
 			GetWorld()->GetDeltaSeconds(), 
 			SpaceshipMovementInterpSpeed);
 	}
-
-	//FVector Forward = GetActorForwardVector() * MovementVector.Y;
-	//FVector DeltaLocation = Forward.GetSafeNormal() * 1000 * GetWorld()->GetDeltaSeconds();
-	//AddActorWorldOffset(DeltaLocation, true);
-
 
 	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Green, MovementVector.ToString());
 }
@@ -65,8 +74,14 @@ void APlayerSpaceship::Look(const FInputActionValue& Value)
 	{
 		TimeSinceLastLookInput = 0.0f;
 
-		AddControllerPitchInput(-LookVector.Y * PitchRotationSpeed);
-		AddControllerYawInput(LookVector.X * YawRotationSpeed);
+		FRotator NewRot = GetActorRotation();
+
+		NewRot.Yaw += LookVector.X * YawRotationSpeed;
+		NewRot.Pitch += LookVector.Y * PitchRotationSpeed;
+
+		NewRot.Pitch = FMath::Clamp(NewRot.Pitch, -80.f, 80.f);
+
+		SetActorRotation(NewRot);
 
 		float TargetRoll = LookVector.X * SpaceshipRollSpeed * YawRotationSpeed;
 		TargetRoll = FMath::Clamp(TargetRoll, -MaxSpaceshipRoll, MaxSpaceshipRoll);
