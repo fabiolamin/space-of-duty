@@ -26,6 +26,11 @@ private:
 	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* SpaceshipCamera;
 
+	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = "true"), Category = "Camera")
+	TSubclassOf<UCameraShakeBase> SpeedCameraShake;
+
+	UCameraShakeBase* ActiveCameraShake;
+
 	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* SpaceshipSpringArm;
 

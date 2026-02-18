@@ -51,24 +51,24 @@ void APlayerSpaceship::Move(const FInputActionValue& Value)
 	{
 		MovementVector.Y = 0.0f;
 	}
-	else if(MovementVector.Y > 0.0f)
+	else if (MovementVector.Y > 0.0f)
 	{
 		TimeSinceLastMoveInput = 0.0f;
 
 		CurrentSpaceshipSpeed = FMath::FInterpTo(
-			CurrentSpaceshipSpeed, 
+			CurrentSpaceshipSpeed,
 			MovementVector.Y * MaxSpaceshipSpeed,
-			GetWorld()->GetDeltaSeconds(), 
+			GetWorld()->GetDeltaSeconds(),
 			SpaceshipMovementInterpSpeed);
 	}
 
-	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Green, MovementVector.ToString());
+	//GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Green, MovementVector.ToString());
 }
 
 void APlayerSpaceship::Look(const FInputActionValue& Value)
 {
 	const FVector2D LookVector = Value.Get<FVector2D>().GetSafeNormal() * GetWorld()->GetDeltaSeconds();
-	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Yellow, LookVector.ToString());
+	//GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Yellow, LookVector.ToString());
 
 	if (Controller != nullptr)
 	{
@@ -97,6 +97,8 @@ void APlayerSpaceship::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Cyan, FString::Printf(TEXT("Current Speed: %.2f"), CurrentSpaceshipSpeed));
+
 	AddActorWorldOffset(GetActorForwardVector() * DeltaTime * CurrentSpaceshipSpeed, true);
 
 	TimeSinceLastLookInput += DeltaTime;
@@ -116,6 +118,37 @@ void APlayerSpaceship::Tick(float DeltaTime)
 			MinSpaceshipSpeed,
 			DeltaTime,
 			SpaceshipMovementInterpSpeed);
+	}
+
+	if (CurrentSpaceshipSpeed > 1000)
+	{
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		if (!PC) return;
+
+		float Intensity = CurrentSpaceshipSpeed / MaxSpaceshipSpeed;
+
+		// Sempre reinicia com nova intensidade
+		if (ActiveCameraShake)
+		{
+			PC->PlayerCameraManager->StopCameraShake(ActiveCameraShake);
+			ActiveCameraShake = nullptr;
+		}
+
+		ActiveCameraShake =
+			PC->PlayerCameraManager->StartCameraShake(
+				SpeedCameraShake,
+				Intensity
+			);
+
+		GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Red, FString::Printf(TEXT("Camera Shake Intensity: %.2f"), Intensity));
+	}
+	else
+	{
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		if (!PC || !ActiveCameraShake) return;
+
+		PC->PlayerCameraManager->StopCameraShake(ActiveCameraShake);
+		ActiveCameraShake = nullptr;
 	}
 }
 
