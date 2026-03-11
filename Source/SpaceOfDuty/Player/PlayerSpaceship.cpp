@@ -23,9 +23,8 @@ APlayerSpaceship::APlayerSpaceship()
 	SpaceshipSpringArm->bInheritYaw = true;
 	SpaceshipSpringArm->bInheritRoll = false;
 
-	//TODO: Enable when the turbo is implemented
-	//SpaceshipSpringArm->bEnableCameraLag = true;
-	//SpaceshipSpringArm->CameraLagSpeed = 8.f;
+	SpaceshipSpringArm->bEnableCameraLag = true;
+	SpaceshipSpringArm->CameraLagSpeed = 12.f;
 
 	SpaceshipCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	SpaceshipCamera->SetupAttachment(SpaceshipSpringArm);
@@ -36,6 +35,9 @@ APlayerSpaceship::APlayerSpaceship()
 
 	DefaultSpaceshipRoll = SpaceshipMesh->GetRelativeRotation().Roll;
 	CurrentSpaceshipSpeed = MinSpaceshipSpeed;
+	TargetSpaceshipSpeed = MaxSpaceshipSpeed;
+
+	DefaultCameraFOV = SpaceshipCamera->FieldOfView;
 }
 
 void APlayerSpaceship::BeginPlay()
@@ -51,7 +53,7 @@ void APlayerSpaceship::Move(const FInputActionValue& Value)
 	{
 		MovementVector.Y = 0.0f;
 	}
-	else if (MovementVector.Y > 0.0f)
+	else if (!IsBoosting && MovementVector.Y > 0.0f)
 	{
 		TimeSinceLastMoveInput = 0.0f;
 
@@ -62,35 +64,52 @@ void APlayerSpaceship::Move(const FInputActionValue& Value)
 			SpaceshipMovementInterpSpeed);
 	}
 
-	//GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Green, MovementVector.ToString());
+	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Green, MovementVector.ToString());
 }
 
 void APlayerSpaceship::Look(const FInputActionValue& Value)
 {
-	const FVector2D LookVector = Value.Get<FVector2D>().GetSafeNormal() * GetWorld()->GetDeltaSeconds();
-	//GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Yellow, LookVector.ToString());
+	const FVector2D LookVector = Value.Get<FVector2D>().GetSafeNormal();
+	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Yellow, LookVector.ToString());
 
 	if (Controller != nullptr)
 	{
 		TimeSinceLastLookInput = 0.0f;
 
+		float DeltaTime = GetWorld()->GetDeltaSeconds();
+
 		FRotator NewRot = GetActorRotation();
 
-		NewRot.Yaw += LookVector.X * YawRotationSpeed;
-		NewRot.Pitch += LookVector.Y * PitchRotationSpeed;
+		NewRot.Yaw += LookVector.X * YawRotationSpeed * DeltaTime;
+		NewRot.Pitch += LookVector.Y * PitchRotationSpeed * DeltaTime;
 
-		NewRot.Pitch = FMath::Clamp(NewRot.Pitch, -80.f, 80.f);
+		NewRot.Pitch = FMath::Clamp(NewRot.Pitch, -MaxPitch, MaxPitch);
 
 		SetActorRotation(NewRot);
 
-		float TargetRoll = LookVector.X * SpaceshipRollSpeed * YawRotationSpeed;
+		float TargetRoll = LookVector.X * MaxSpaceshipRoll;
 		TargetRoll = FMath::Clamp(TargetRoll, -MaxSpaceshipRoll, MaxSpaceshipRoll);
 
 		FRotator CurrentRotation = SpaceshipMesh->GetRelativeRotation();
 
-		float NewRoll = FMath::FInterpTo(CurrentRotation.Roll, TargetRoll, GetWorld()->GetDeltaSeconds(), SpaceshipRollInterpSpeed);
+		float NewRoll = FMath::FInterpTo(CurrentRotation.Roll, TargetRoll, DeltaTime, SpaceshipRollInterpSpeed);
 		SpaceshipMesh->SetRelativeRotation(FRotator(CurrentRotation.Pitch, CurrentRotation.Yaw, NewRoll));
 	}
+}
+
+void APlayerSpaceship::StartBoost(const FInputActionValue& Value)
+{
+	IsBoosting = true;
+	TargetSpaceshipSpeed = BoostSpaceshipSpeed;
+
+	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Purple, FString::Printf(TEXT("Boosting: %s"), IsBoosting ? TEXT("True") : TEXT("False")));
+}
+
+void APlayerSpaceship::StopBoost(const FInputActionValue& Value)
+{
+	IsBoosting = false;
+
+	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Purple, FString::Printf(TEXT("Boosting: %s"), IsBoosting ? TEXT("True") : TEXT("False")));
 }
 
 void APlayerSpaceship::Tick(float DeltaTime)
@@ -98,6 +117,7 @@ void APlayerSpaceship::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Cyan, FString::Printf(TEXT("Current Speed: %.2f"), CurrentSpaceshipSpeed));
+	GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Orange, FString::Printf(TEXT("Current FOV: %.2f"), SpaceshipCamera->FieldOfView));
 
 	AddActorWorldOffset(GetActorForwardVector() * DeltaTime * CurrentSpaceshipSpeed, true);
 
@@ -111,7 +131,7 @@ void APlayerSpaceship::Tick(float DeltaTime)
 		SpaceshipMesh->SetRelativeRotation(FRotator(CurrentRotation.Pitch, CurrentRotation.Yaw, NewRoll));
 	}
 
-	if (TimeSinceLastMoveInput >= MaxTimeSinceLastMoveInput)
+	if (!IsBoosting || TimeSinceLastMoveInput >= MaxTimeSinceLastMoveInput)
 	{
 		CurrentSpaceshipSpeed = FMath::FInterpTo(
 			CurrentSpaceshipSpeed,
@@ -120,14 +140,32 @@ void APlayerSpaceship::Tick(float DeltaTime)
 			SpaceshipMovementInterpSpeed);
 	}
 
-	if (CurrentSpaceshipSpeed > 1000)
+	if (IsBoosting)
 	{
 		APlayerController* PC = Cast<APlayerController>(GetController());
 		if (!PC) return;
 
-		float Intensity = CurrentSpaceshipSpeed / MaxSpaceshipSpeed;
+		CurrentSpaceshipSpeed = FMath::FInterpTo(
+			CurrentSpaceshipSpeed,
+			BoostSpaceshipSpeed,
+			DeltaTime,
+			SpaceshipBoostInterpSpeed);
 
-		// Sempre reinicia com nova intensidade
+		float SpeedAlpha = CurrentSpaceshipSpeed / BoostSpaceshipSpeed;
+
+		float TargetFOV = DefaultCameraFOV + (SpeedAlpha * BoostCameraDeltaFOV);
+
+		SpaceshipCamera->SetFieldOfView(
+			FMath::FInterpTo(
+				SpaceshipCamera->FieldOfView,
+				TargetFOV,
+				DeltaTime,
+				SpaceshipBoostInterpSpeed
+			)
+		);
+
+		float Intensity = CurrentSpaceshipSpeed / BoostSpaceshipSpeed;
+
 		if (ActiveCameraShake)
 		{
 			PC->PlayerCameraManager->StopCameraShake(ActiveCameraShake);
@@ -144,6 +182,15 @@ void APlayerSpaceship::Tick(float DeltaTime)
 	}
 	else
 	{
+		SpaceshipCamera->SetFieldOfView(
+			FMath::FInterpTo(
+				SpaceshipCamera->FieldOfView,
+				DefaultCameraFOV,
+				DeltaTime,
+				SpaceshipFOVInterpSpeed
+			)
+		);
+
 		APlayerController* PC = Cast<APlayerController>(GetController());
 		if (!PC || !ActiveCameraShake) return;
 
@@ -158,8 +205,11 @@ void APlayerSpaceship::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 	if (UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
 	{
-		EnhancedInputComponent->BindAction(ForwardAction, ETriggerEvent::Triggered, this, &APlayerSpaceship::Move);
+		EnhancedInputComponent->BindAction(MovementAction, ETriggerEvent::Triggered, this, &APlayerSpaceship::Move);
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &APlayerSpaceship::Look);
+
+		EnhancedInputComponent->BindAction(BoostAction, ETriggerEvent::Started, this, &APlayerSpaceship::StartBoost);
+		EnhancedInputComponent->BindAction(BoostAction, ETriggerEvent::Completed, this, &APlayerSpaceship::StopBoost);
 	}
 }
 
