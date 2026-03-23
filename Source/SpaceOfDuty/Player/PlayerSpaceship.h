@@ -47,6 +47,9 @@ private:
 	class UInputAction* LookAction;
 
 	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	class UInputAction* AimAction;
+
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	float MaxTimeSinceLastLookInput = 0.1f;
 
 	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
@@ -99,10 +102,14 @@ private:
 	float DefaultCameraFOV;
 
 	bool IsBoosting = false;
+	bool IsAiming = false;
 
 	void Move(const struct FInputActionValue& Value);
 	void Look(const struct FInputActionValue& Value);
 
 	void StartBoost(const struct FInputActionValue& Value);
 	void StopBoost(const struct FInputActionValue& Value);
+
+	void StartAim(const struct FInputActionValue& Value);
+	void StopAim(const struct FInputActionValue& Value);
 };

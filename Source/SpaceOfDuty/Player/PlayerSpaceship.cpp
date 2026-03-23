@@ -24,7 +24,6 @@ APlayerSpaceship::APlayerSpaceship()
 	SpaceshipSpringArm->bInheritRoll = false;
 
 	SpaceshipSpringArm->bEnableCameraLag = true;
-	SpaceshipSpringArm->CameraLagSpeed = 12.f;
 
 	SpaceshipCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	SpaceshipCamera->SetupAttachment(SpaceshipSpringArm);
@@ -80,8 +79,8 @@ void APlayerSpaceship::Look(const FInputActionValue& Value)
 
 		FRotator NewRot = GetActorRotation();
 
-		NewRot.Yaw += LookVector.X * YawRotationSpeed * DeltaTime;
-		NewRot.Pitch += LookVector.Y * PitchRotationSpeed * DeltaTime;
+		NewRot.Yaw += LookVector.X * (IsAiming ? YawRotationSpeed * 0.6f : YawRotationSpeed) * DeltaTime;
+		NewRot.Pitch += LookVector.Y * (IsAiming ? PitchRotationSpeed * 0.6f : PitchRotationSpeed) * DeltaTime;
 
 		NewRot.Pitch = FMath::Clamp(NewRot.Pitch, -MaxPitch, MaxPitch);
 
@@ -110,6 +109,20 @@ void APlayerSpaceship::StopBoost(const FInputActionValue& Value)
 	IsBoosting = false;
 
 	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Purple, FString::Printf(TEXT("Boosting: %s"), IsBoosting ? TEXT("True") : TEXT("False")));
+}
+
+void APlayerSpaceship::StartAim(const FInputActionValue& Value)
+{
+	IsAiming = true;
+
+	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Blue, FString::Printf(TEXT("Aiming: %s"), IsAiming ? TEXT("True") : TEXT("False")));
+}
+
+void APlayerSpaceship::StopAim(const FInputActionValue& Value)
+{
+	IsAiming = false;
+
+	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Blue, FString::Printf(TEXT("Aiming: %s"), IsAiming ? TEXT("True") : TEXT("False")));
 }
 
 void APlayerSpaceship::Tick(float DeltaTime)
@@ -151,26 +164,24 @@ void APlayerSpaceship::Tick(float DeltaTime)
 			DeltaTime,
 			SpaceshipBoostInterpSpeed);
 
-		float SpeedAlpha = CurrentSpaceshipSpeed / BoostSpaceshipSpeed;
-
-		float TargetFOV = DefaultCameraFOV + (SpeedAlpha * BoostCameraDeltaFOV);
-
 		SpaceshipCamera->SetFieldOfView(
 			FMath::FInterpTo(
 				SpaceshipCamera->FieldOfView,
-				TargetFOV,
+				IsAiming ? 60.f : DefaultCameraFOV + BoostCameraDeltaFOV,
 				DeltaTime,
-				SpaceshipBoostInterpSpeed
+				IsAiming ? SpaceshipBoostInterpSpeed * 2.f : SpaceshipBoostInterpSpeed
 			)
 		);
 
 		float Intensity = CurrentSpaceshipSpeed / BoostSpaceshipSpeed;
 
-		if (ActiveCameraShake)
+		if (ActiveCameraShake || IsAiming)
 		{
 			PC->PlayerCameraManager->StopCameraShake(ActiveCameraShake);
 			ActiveCameraShake = nullptr;
 		}
+
+		if (IsAiming) return;
 
 		ActiveCameraShake =
 			PC->PlayerCameraManager->StartCameraShake(
@@ -185,9 +196,9 @@ void APlayerSpaceship::Tick(float DeltaTime)
 		SpaceshipCamera->SetFieldOfView(
 			FMath::FInterpTo(
 				SpaceshipCamera->FieldOfView,
-				DefaultCameraFOV,
+				IsAiming ? 60.f : DefaultCameraFOV,
 				DeltaTime,
-				SpaceshipFOVInterpSpeed
+				IsAiming ? SpaceshipBoostInterpSpeed * 2.f : SpaceshipBoostInterpSpeed
 			)
 		);
 
@@ -210,6 +221,9 @@ void APlayerSpaceship::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 		EnhancedInputComponent->BindAction(BoostAction, ETriggerEvent::Started, this, &APlayerSpaceship::StartBoost);
 		EnhancedInputComponent->BindAction(BoostAction, ETriggerEvent::Completed, this, &APlayerSpaceship::StopBoost);
+
+		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Started, this, &APlayerSpaceship::StartAim);
+		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this, &APlayerSpaceship::StopAim);
 	}
 }
 
