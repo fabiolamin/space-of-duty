@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+#include "Combat/SpaceshipProjectile.h"
 #include "PlayerSpaceship.generated.h"
 
 UCLASS()
@@ -19,7 +20,7 @@ protected:
 
 
 private:
-	
+
 	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess = "true"))
 	class UStaticMeshComponent* SpaceshipMesh;
 
@@ -48,6 +49,9 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	class UInputAction* AimAction;
+
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	class UInputAction* ShootAction;
 
 	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	float MaxTimeSinceLastLookInput = 0.1f;
@@ -94,8 +98,26 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	float BoostCameraDeltaFOV = 20.0f;
 
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	USceneComponent* MuzzleLeft;
+
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	USceneComponent* MuzzleRight;
+
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<ASpaceshipProjectile> ProjectileClass;
+
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	float ShootingInterval;
+
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	float BaseProjectileSpeed = 35000;
+
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+
 	float TimeSinceLastLookInput = 0.0f;
 	float TimeSinceLastMoveInput = 0.0f;
+	float TimeSinceLastShot = 0.0f;
 	float CurrentSpaceshipSpeed;
 	float TargetSpaceshipSpeed;
 	float DefaultSpaceshipRoll = 0.0f;
@@ -103,6 +125,9 @@ private:
 
 	bool IsBoosting = false;
 	bool IsAiming = false;
+	bool IsShooting = false;
+
+	TArray<USceneComponent*> GetMuzzleComponents() const;
 
 	void Move(const struct FInputActionValue& Value);
 	void Look(const struct FInputActionValue& Value);
@@ -112,4 +137,10 @@ private:
 
 	void StartAim(const struct FInputActionValue& Value);
 	void StopAim(const struct FInputActionValue& Value);
+
+	void StartShoot(const struct FInputActionValue& Value);
+	void StopShoot(const struct FInputActionValue& Value);
+
+	void CheckShooting(float DeltaTime);
+	void Shoot();
 };

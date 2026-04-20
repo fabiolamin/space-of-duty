@@ -2,8 +2,8 @@
 #include <InputTriggers.h>
 #include "EnhancedInputComponent.h" 
 #include "Camera/CameraComponent.h" 
-
 #include "GameFramework/SpringArmComponent.h"
+#include "GameFramework/ProjectileMovementComponent.h"
 
 APlayerSpaceship::APlayerSpaceship()
 {
@@ -32,16 +32,32 @@ APlayerSpaceship::APlayerSpaceship()
 	SpaceshipMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ShipMesh"));
 	SpaceshipMesh->SetupAttachment(RootComponent);
 
-	DefaultSpaceshipRoll = SpaceshipMesh->GetRelativeRotation().Roll;
-	CurrentSpaceshipSpeed = MinSpaceshipSpeed;
-	TargetSpaceshipSpeed = MaxSpaceshipSpeed;
+	MuzzleLeft = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleLeft"));
+	MuzzleLeft->SetupAttachment(SpaceshipMesh);
 
-	DefaultCameraFOV = SpaceshipCamera->FieldOfView;
+	MuzzleRight = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleRight"));
+	MuzzleRight->SetupAttachment(SpaceshipMesh);
 }
 
 void APlayerSpaceship::BeginPlay()
 {
 	Super::BeginPlay();
+
+	DefaultSpaceshipRoll = SpaceshipMesh->GetRelativeRotation().Roll;
+	CurrentSpaceshipSpeed = MinSpaceshipSpeed;
+	TargetSpaceshipSpeed = MaxSpaceshipSpeed;
+
+	DefaultCameraFOV = SpaceshipCamera->FieldOfView;
+
+	TimeSinceLastShot = ShootingInterval;
+}
+
+TArray<USceneComponent*> APlayerSpaceship::GetMuzzleComponents() const
+{
+	TArray<USceneComponent*> Muzzles;
+	if (MuzzleLeft) Muzzles.Add(MuzzleLeft);
+	if (MuzzleRight) Muzzles.Add(MuzzleRight);
+	return Muzzles;
 }
 
 void APlayerSpaceship::Move(const FInputActionValue& Value)
@@ -125,6 +141,99 @@ void APlayerSpaceship::StopAim(const FInputActionValue& Value)
 	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Blue, FString::Printf(TEXT("Aiming: %s"), IsAiming ? TEXT("True") : TEXT("False")));
 }
 
+void APlayerSpaceship::StartShoot(const FInputActionValue& Value)
+{
+	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Magenta, TEXT("Start Shooting"));
+
+	IsShooting = true;
+}
+
+void APlayerSpaceship::StopShoot(const FInputActionValue& Value)
+{
+	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Magenta, TEXT("Stop Shooting"));
+
+	IsShooting = false;
+}
+
+void APlayerSpaceship::CheckShooting(float DeltaTime)
+{
+	if (IsShooting)
+	{
+		TimeSinceLastShot += DeltaTime;
+
+		if (TimeSinceLastShot >= ShootingInterval)
+		{
+			Shoot();
+
+			TimeSinceLastShot = 0.0f;
+		}
+	}
+	else
+	{
+		if (TimeSinceLastShot != ShootingInterval)
+		{
+			TimeSinceLastShot = ShootingInterval;
+		}
+	}
+}
+
+void APlayerSpaceship::Shoot()
+{
+	TArray<USceneComponent*> Muzzles = GetMuzzleComponents();
+
+	if (!ProjectileClass || Muzzles.Num() == 0) return;
+
+	FVector CameraLocation = SpaceshipCamera->GetComponentLocation();
+	FVector CameraForward = SpaceshipCamera->GetForwardVector();
+
+	float TraceDistance = 10000.f;
+
+	FVector TraceEnd = CameraLocation + (CameraForward * TraceDistance);
+
+	for (USceneComponent* Muzzle : Muzzles)
+	{
+		if (!Muzzle) continue;
+
+		FHitResult HitResult;
+
+		FCollisionQueryParams QueryParams;
+		QueryParams.AddIgnoredActor(this);
+
+		bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, CameraLocation, TraceEnd, ECC_Visibility, QueryParams);
+
+		FVector SpawnLocation = Muzzle->GetComponentLocation();
+		FVector LocalMuzzleLocation = Muzzle->GetRelativeLocation();
+
+		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan, FString::Printf(TEXT("Spawn Location: %s"), *LocalMuzzleLocation.ToString()));
+
+		FVector TargetPoint = bHit ? HitResult.ImpactPoint : TraceEnd;
+
+		FVector ShootDirection = (TargetPoint - SpawnLocation).GetSafeNormal();
+		FRotator SpawnRotation = ShootDirection.Rotation();
+
+		FActorSpawnParameters Params;
+		Params.Owner = this;
+		Params.Instigator = GetInstigator();
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+		ASpaceshipProjectile* Projectile = GetWorld()->SpawnActor<ASpaceshipProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, Params);
+
+		const float MaxProjectileMultiplier = 2.f;
+
+		float SpeedRatio = FMath::Clamp(CurrentSpaceshipSpeed / MaxSpaceshipSpeed, 0.f, 1.f);
+
+		float FinalProjectileSpeed = FMath::Lerp(BaseProjectileSpeed, BaseProjectileSpeed * MaxProjectileMultiplier, SpeedRatio);
+
+		if (Projectile)
+		{
+			Projectile->InitProjectile(ShootDirection, FinalProjectileSpeed);
+		}
+
+		DrawDebugLine(GetWorld(), CameraLocation, TargetPoint, FColor::Red, false, 2.f);
+		DrawDebugSphere(GetWorld(), TargetPoint, 10.f, 12, FColor::Green, false, 2.f);
+	}
+}
+
 void APlayerSpaceship::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -136,6 +245,8 @@ void APlayerSpaceship::Tick(float DeltaTime)
 
 	TimeSinceLastLookInput += DeltaTime;
 	TimeSinceLastMoveInput += DeltaTime;
+
+	CheckShooting(DeltaTime);
 
 	if (TimeSinceLastLookInput >= MaxTimeSinceLastLookInput)
 	{
@@ -224,6 +335,8 @@ void APlayerSpaceship::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Started, this, &APlayerSpaceship::StartAim);
 		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this, &APlayerSpaceship::StopAim);
+
+		EnhancedInputComponent->BindAction(ShootAction, ETriggerEvent::Started, this, &APlayerSpaceship::StartShoot);
+		EnhancedInputComponent->BindAction(ShootAction, ETriggerEvent::Completed, this, &APlayerSpaceship::StopShoot);
 	}
 }
-
