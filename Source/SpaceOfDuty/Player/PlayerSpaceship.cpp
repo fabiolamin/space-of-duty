@@ -84,8 +84,19 @@ void APlayerSpaceship::Move(const FInputActionValue& Value)
 
 void APlayerSpaceship::Look(const FInputActionValue& Value)
 {
-	const FVector2D LookVector = Value.Get<FVector2D>().GetSafeNormal();
-	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Yellow, LookVector.ToString());
+	const float BaseSensitivity = 0.095f;
+	const float AccelerationStrength = 0.085f;
+	const float MaxSensitivity = 0.12f;
+	const float AccelPower = 1.25f;
+
+	const FVector2D LookVector = Value.Get<FVector2D>();
+
+	float MouseSpeed = LookVector.Size();
+	float Acceleration = FMath::Pow(MouseSpeed, AccelPower) * AccelerationStrength;
+
+	float SensitivityMultiplier = FMath::Clamp(Acceleration, BaseSensitivity, MaxSensitivity);
+
+	const FVector2D NewLookVector = LookVector * SensitivityMultiplier;
 
 	if (Controller != nullptr)
 	{
@@ -95,20 +106,23 @@ void APlayerSpaceship::Look(const FInputActionValue& Value)
 
 		FRotator NewRot = GetActorRotation();
 
-		NewRot.Yaw += LookVector.X * (IsAiming ? YawRotationSpeed * 0.6f : YawRotationSpeed) * DeltaTime;
-		NewRot.Pitch += LookVector.Y * (IsAiming ? PitchRotationSpeed * 0.6f : PitchRotationSpeed) * DeltaTime;
+		NewRot.Yaw += NewLookVector.X;
+		NewRot.Pitch += NewLookVector.Y;
 
 		NewRot.Pitch = FMath::Clamp(NewRot.Pitch, -MaxPitch, MaxPitch);
 
 		SetActorRotation(NewRot);
 
-		float TargetRoll = LookVector.X * MaxSpaceshipRoll;
-		TargetRoll = FMath::Clamp(TargetRoll, -MaxSpaceshipRoll, MaxSpaceshipRoll);
+		if (NewLookVector.X != 0.f)
+		{
+			float TargetRoll = NewLookVector.X * MaxSpaceshipRoll;
+			TargetRoll = FMath::Clamp(TargetRoll, -MaxSpaceshipRoll, MaxSpaceshipRoll);
 
-		FRotator CurrentRotation = SpaceshipMesh->GetRelativeRotation();
+			FRotator CurrentRotation = SpaceshipMesh->GetRelativeRotation();
 
-		float NewRoll = FMath::FInterpTo(CurrentRotation.Roll, TargetRoll, DeltaTime, SpaceshipRollInterpSpeed);
-		SpaceshipMesh->SetRelativeRotation(FRotator(CurrentRotation.Pitch, CurrentRotation.Yaw, NewRoll));
+			float NewRoll = FMath::FInterpTo(CurrentRotation.Roll, TargetRoll, DeltaTime, SpaceshipRollSpeed);
+			SpaceshipMesh->SetRelativeRotation(FRotator(CurrentRotation.Pitch, CurrentRotation.Yaw, NewRoll));
+		}
 	}
 }
 
