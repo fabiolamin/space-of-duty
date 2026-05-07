@@ -134,6 +134,8 @@ private:
 	bool IsAiming = false;
 	bool IsShooting = false;
 
+	float CurrentSpaceshipRoll;
+
 	TArray<USceneComponent*> GetMuzzleComponents() const;
 
 	void Move(const struct FInputActionValue& Value);

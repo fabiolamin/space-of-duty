@@ -85,9 +85,9 @@ void APlayerSpaceship::Move(const FInputActionValue& Value)
 void APlayerSpaceship::Look(const FInputActionValue& Value)
 {
 	const float BaseSensitivity = 0.095f;
-	const float AccelerationStrength = 0.085f;
+	const float AccelerationStrength = 0.087f;
 	const float MaxSensitivity = 0.12f;
-	const float AccelPower = 1.25f;
+	const float AccelPower = 1.2f;
 
 	const FVector2D LookVector = Value.Get<FVector2D>();
 
@@ -113,16 +113,22 @@ void APlayerSpaceship::Look(const FInputActionValue& Value)
 
 		SetActorRotation(NewRot);
 
-		if (NewLookVector.X != 0.f)
-		{
-			float TargetRoll = NewLookVector.X * MaxSpaceshipRoll;
-			TargetRoll = FMath::Clamp(TargetRoll, -MaxSpaceshipRoll, MaxSpaceshipRoll);
+		const float YawInput = NewLookVector.X;
 
-			FRotator CurrentRotation = SpaceshipMesh->GetRelativeRotation();
+		const float YawSpeedDegPerSec = (DeltaTime > KINDA_SMALL_NUMBER) ? (YawInput / DeltaTime) : 0.0f;
 
-			float NewRoll = FMath::FInterpTo(CurrentRotation.Roll, TargetRoll, DeltaTime, SpaceshipRollSpeed);
-			SpaceshipMesh->SetRelativeRotation(FRotator(CurrentRotation.Pitch, CurrentRotation.Yaw, NewRoll));
-		}
+		const float MaxYawSpeedDegPerSec = 120.0f;
+
+		const float NormalizedYawSpeed = FMath::Clamp(YawSpeedDegPerSec / MaxYawSpeedDegPerSec, -1.0f, 1.0f);
+
+		const float SpeedFactor = (MaxSpaceshipSpeed > KINDA_SMALL_NUMBER) ? FMath::Clamp(CurrentSpaceshipSpeed / MaxSpaceshipSpeed, 0.0f, 1.0f) : 0.0f;
+		const float SpeedRollScale = FMath::Lerp(1.0f, 1.5f, SpeedFactor);
+
+		float TargetRoll = NormalizedYawSpeed * MaxSpaceshipRoll * SpeedRollScale;
+
+		TargetRoll = FMath::Clamp(TargetRoll, -MaxSpaceshipRoll, MaxSpaceshipRoll);
+
+		CurrentSpaceshipRoll = TargetRoll;
 	}
 }
 
@@ -143,6 +149,8 @@ void APlayerSpaceship::StopBoost(const FInputActionValue& Value)
 
 void APlayerSpaceship::StartAim(const FInputActionValue& Value)
 {
+	if (IsBoosting) return;
+
 	IsAiming = true;
 
 	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Blue, FString::Printf(TEXT("Aiming: %s"), IsAiming ? TEXT("True") : TEXT("False")));
@@ -264,10 +272,12 @@ void APlayerSpaceship::Tick(float DeltaTime)
 
 	if (TimeSinceLastLookInput >= MaxTimeSinceLastLookInput)
 	{
-		FRotator CurrentRotation = SpaceshipMesh->GetRelativeRotation();
-		float NewRoll = FMath::FInterpTo(CurrentRotation.Roll, DefaultSpaceshipRoll, DeltaTime, SpaceshipRollInterpSpeed);
-		SpaceshipMesh->SetRelativeRotation(FRotator(CurrentRotation.Pitch, CurrentRotation.Yaw, NewRoll));
+		CurrentSpaceshipRoll = DefaultSpaceshipRoll;
 	}
+
+	FRotator CurrentRotation = SpaceshipMesh->GetRelativeRotation();
+	float NewRoll = FMath::FInterpTo(CurrentRotation.Roll, CurrentSpaceshipRoll, DeltaTime, SpaceshipRollInterpSpeed);
+	SpaceshipMesh->SetRelativeRotation(FRotator(CurrentRotation.Pitch, CurrentRotation.Yaw, NewRoll));
 
 	if (!IsBoosting || TimeSinceLastMoveInput >= MaxTimeSinceLastMoveInput)
 	{
