@@ -18,7 +18,6 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-
 private:
 
 	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess = "true"))
@@ -66,16 +65,13 @@ private:
 	float SpaceshipRollInterpSpeed = 4.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	float SpaceshipFOVInterpSpeed = 1.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	float SpaceshipRollSpeed = 30.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	float MaxTimeSinceLastMoveInput = 0.2f;
 
 	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	float SpaceshipMovementInterpSpeed = 4.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	float SpaceshipFOVAimInterpSpeed = 5.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	float SpaceshipBoostInterpSpeed = 2.5f;
@@ -90,18 +86,13 @@ private:
 	float BoostSpaceshipSpeed = 2000.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	float YawRotationSpeed = 75.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	float PitchRotationSpeed = 40.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	float MaxPitch = 80.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	float BoostCameraDeltaFOV = 20.0f;
 
-
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	float SpaceshipAimCameraFOV = 60.0f;
 
 
 
@@ -125,8 +116,11 @@ private:
 	float TimeSinceLastLookInput = 0.0f;
 	float TimeSinceLastMoveInput = 0.0f;
 	float TimeSinceLastShot = 0.0f;
+	float TimeSinceLastCameraFOVUpdate = 0.0f;
+
+	float TargetSpaceshipRoll;
 	float CurrentSpaceshipSpeed;
-	float TargetSpaceshipSpeed;
+
 	float DefaultSpaceshipRoll = 0.0f;
 	float DefaultCameraFOV;
 
@@ -134,7 +128,10 @@ private:
 	bool IsAiming = false;
 	bool IsShooting = false;
 
-	float CurrentSpaceshipRoll;
+	float TargetSpaceshipFOV;
+	float TargetSpaceshipSpeed;
+	float TargetSpaceshipFOVInterpSpeed;
+
 
 	TArray<USceneComponent*> GetMuzzleComponents() const;
 
@@ -151,5 +148,9 @@ private:
 	void StopShoot(const struct FInputActionValue& Value);
 
 	void CheckShooting(float DeltaTime);
+	void CheckSpaceshipBoosting(float DeltaTime);
+	void UpdateSpaceshipRoll(float DeltaTime);
+	void UpdateSpaceshipCameraFOV(float DeltaTime);
 	void Shoot();
+
 };
