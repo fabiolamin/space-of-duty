@@ -6,7 +6,7 @@
 
 ASpaceshipProjectile::ASpaceshipProjectile()
 {
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 
 	SphereComponent = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComponent"));
 	SetRootComponent(Cast<USceneComponent>(SphereComponent));
@@ -24,6 +24,12 @@ ASpaceshipProjectile::ASpaceshipProjectile()
 	ProjectileMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	ProjectileMesh->SetGenerateOverlapEvents(false);
 	ProjectileMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+
+	ProjectileMovement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovement"));
+	ProjectileMovement->UpdatedComponent = SphereComponent;
+	ProjectileMovement->bShouldBounce = false;
+	ProjectileMovement->ProjectileGravityScale = 0.f;
+	ProjectileMovement->bForceSubStepping = true;	
 }
 
 void ASpaceshipProjectile::BeginPlay()
@@ -36,17 +42,12 @@ void ASpaceshipProjectile::BeginPlay()
 void ASpaceshipProjectile::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
-	AddActorWorldOffset(ProjectileDirection * ProjectileSpeed * DeltaTime, true);
 }
 
-void ASpaceshipProjectile::InitProjectile(const FVector& Direction, float Speed)
+void ASpaceshipProjectile::InitProjectile(const FVector& Direction)
 {
-	ProjectileDirection = Direction.GetSafeNormal();
-	ProjectileSpeed = Speed;
-
-	if (GEngine)
+	if (ProjectileMovement)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, FString::Printf(TEXT("Projectile Initialized with Direction: %s and Speed: %.2f"), *ProjectileDirection.ToString(), ProjectileSpeed));
+		ProjectileMovement->Velocity = Direction.GetSafeNormal() * ProjectileSpeed;
 	}
 }

@@ -16,7 +16,7 @@ public:
 
 	virtual void Tick(float DeltaTime) override;
 
-	void InitProjectile(const FVector& Direction, float );
+	void InitProjectile(const FVector& Direction);
 
 
 protected:
@@ -32,6 +32,9 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Movement", meta = (AllowPrivateAccess = "true"))
 	class UProjectileMovementComponent* ProjectileMovement;
 
+	UPROPERTY(EditAnywhere, Category = "Movement", meta = (AllowPrivateAccess = "true"))
+	float ProjectileSpeed;
+
 	UPROPERTY(EditAnywhere, Category = "Damage", meta = (AllowPrivateAccess = "true"))
 	float Damage;
 
@@ -39,5 +42,4 @@ private:
 	float LifeSpan;
 
 	FVector ProjectileDirection;
-	float ProjectileSpeed;
 };
