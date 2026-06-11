@@ -228,51 +228,54 @@ void APlayerSpaceship::Shoot()
 	FVector CameraLocation = SpaceshipCamera->GetComponentLocation();
 	FVector CameraForward = SpaceshipCamera->GetForwardVector();
 
-	float TraceDistance = 10000.f;
+	float TraceDistance = 100000.f;
 
 	FVector TraceEnd = CameraLocation + (CameraForward * TraceDistance);
+
+	FHitResult HitResult;
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(this);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, CameraLocation, TraceEnd, ECC_Visibility, QueryParams);
+
+	FVector TargetPoint = bHit ? HitResult.ImpactPoint : TraceEnd;
 
 	for (USceneComponent* Muzzle : Muzzles)
 	{
 		if (!Muzzle) continue;
-
-		FHitResult HitResult;
-
-		FCollisionQueryParams QueryParams;
-		QueryParams.AddIgnoredActor(this);
-
-		bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, CameraLocation, TraceEnd, ECC_Visibility, QueryParams);
-
-		FVector SpawnLocation = Muzzle->GetComponentLocation();
-		FVector LocalMuzzleLocation = Muzzle->GetRelativeLocation();
-
-		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan, FString::Printf(TEXT("Spawn Location: %s"), *LocalMuzzleLocation.ToString()));
-
-		FVector TargetPoint = bHit ? HitResult.ImpactPoint : TraceEnd;
-
-		FVector ShootDirection = (TargetPoint - SpawnLocation).GetSafeNormal();
-		FRotator SpawnRotation = ShootDirection.Rotation();
 
 		FActorSpawnParameters Params;
 		Params.Owner = this;
 		Params.Instigator = GetInstigator();
 		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
+		FVector SpawnLocation = Muzzle->GetComponentLocation();
+		FVector LocalMuzzleLocation = Muzzle->GetRelativeLocation();
+
+		FVector ShootDirection = (TargetPoint - SpawnLocation).GetSafeNormal();
+		FRotator SpawnRotation = ShootDirection.Rotation();
+
 		ASpaceshipProjectile* Projectile = GetWorld()->SpawnActor<ASpaceshipProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, Params);
-
-		const float MaxProjectileMultiplier = 2.f;
-
-		float SpeedRatio = FMath::Clamp(CurrentSpaceshipSpeed / MaxSpaceshipSpeed, 0.f, 1.f);
-
-		float FinalProjectileSpeed = FMath::Lerp(BaseProjectileSpeed, BaseProjectileSpeed * MaxProjectileMultiplier, SpeedRatio);
 
 		if (Projectile)
 		{
-			Projectile->InitProjectile(ShootDirection, FinalProjectileSpeed);
+			Projectile->InitProjectile(ShootDirection);
 		}
 
-		DrawDebugLine(GetWorld(), CameraLocation, TargetPoint, FColor::Red, false, 2.f);
-		DrawDebugSphere(GetWorld(), TargetPoint, 10.f, 12, FColor::Green, false, 2.f);
+		//DrawDebugLine(GetWorld(), CameraLocation, TargetPoint, FColor::Red, false, 2.f);
+		//DrawDebugSphere(GetWorld(), TargetPoint, 100.f, 12, FColor::Green, false, 5.f);
+
+		//DrawDebugLine(
+		//	GetWorld(),
+		//	SpawnLocation,
+		//	SpawnLocation + ShootDirection * 5000.f,
+		//	FColor::Blue,
+		//	false,
+		//	10.f,
+		//	0,
+		//	5.f
+		//);
 	}
 }
 

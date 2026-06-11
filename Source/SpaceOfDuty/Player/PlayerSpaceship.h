@@ -109,9 +109,6 @@ private:
 	float ShootingInterval;
 
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
-	float BaseProjectileSpeed = 35000;
-
-	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 
 	float TimeSinceLastLookInput = 0.0f;
 	float TimeSinceLastMoveInput = 0.0f;
