@@ -245,6 +245,10 @@ void APlayerSpaceship::Shoot()
 	{
 		if (!Muzzle) continue;
 
+		FVector ToMuzzle = (Muzzle->GetComponentLocation() - GetActorLocation()).GetSafeNormal();
+		float Dot = FVector::DotProduct(ToMuzzle, GetActorRightVector());
+		bool IsRight = Dot > 0.1f; 
+
 		FActorSpawnParameters Params;
 		Params.Owner = this;
 		Params.Instigator = GetInstigator();
@@ -253,7 +257,11 @@ void APlayerSpaceship::Shoot()
 		FVector SpawnLocation = Muzzle->GetComponentLocation();
 		FVector LocalMuzzleLocation = Muzzle->GetRelativeLocation();
 
-		FVector ShootDirection = (TargetPoint - SpawnLocation).GetSafeNormal();
+		float MuzzleOffset = 150;
+		FVector MuzzleOffsetVector = GetActorRightVector() * MuzzleOffset;
+		FVector MuzzleTargetPoint = TargetPoint + (IsRight ? MuzzleOffsetVector : -MuzzleOffsetVector);
+
+		FVector ShootDirection = (MuzzleTargetPoint - SpawnLocation).GetSafeNormal();
 		FRotator SpawnRotation = ShootDirection.Rotation();
 
 		ASpaceshipProjectile* Projectile = GetWorld()->SpawnActor<ASpaceshipProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, Params);
@@ -264,7 +272,7 @@ void APlayerSpaceship::Shoot()
 		}
 
 		//DrawDebugLine(GetWorld(), CameraLocation, TargetPoint, FColor::Red, false, 2.f);
-		//DrawDebugSphere(GetWorld(), TargetPoint, 100.f, 12, FColor::Green, false, 5.f);
+		//DrawDebugSphere(GetWorld(), MuzzleTargetPoint, 100.f, 12, FColor::Green, false, 5.f);
 
 		//DrawDebugLine(
 		//	GetWorld(),
