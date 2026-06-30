@@ -37,6 +37,8 @@ APlayerSpaceship::APlayerSpaceship()
 
 	MuzzleRight = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleRight"));
 	MuzzleRight->SetupAttachment(SpaceshipMesh);
+
+	BulletPool = CreateDefaultSubobject<UPoolManagerComponent>(TEXT("BulletPool"));
 }
 
 void APlayerSpaceship::BeginPlay()
@@ -264,7 +266,10 @@ void APlayerSpaceship::Shoot()
 		FVector ShootDirection = (MuzzleTargetPoint - SpawnLocation).GetSafeNormal();
 		FRotator SpawnRotation = ShootDirection.Rotation();
 
-		ASpaceshipProjectile* Projectile = GetWorld()->SpawnActor<ASpaceshipProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, Params);
+		AActor* PooledActor = BulletPool->GetPooledActor();
+		ASpaceshipProjectile* Projectile = Cast<ASpaceshipProjectile>(PooledActor);
+
+		Projectile->SetActorLocationAndRotation(SpawnLocation, SpawnRotation);
 
 		if (Projectile)
 		{

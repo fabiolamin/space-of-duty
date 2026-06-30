@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
 #include "Combat/SpaceshipProjectile.h"
+#include "Tools/PoolManagerComponent.h"
 #include "PlayerSpaceship.generated.h"
 
 UCLASS()
@@ -104,6 +105,9 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<ASpaceshipProjectile> ProjectileClass;
+
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	UPoolManagerComponent* BulletPool;
 
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	float ShootingInterval;
