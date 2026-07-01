@@ -275,7 +275,7 @@ void APlayerSpaceship::Shoot()
 
 		if (Projectile)
 		{
-			Projectile->InitProjectile(ShootDirection);
+			Projectile->InitProjectile(ShootDirection, BulletPool);
 		}
 
 		//DrawDebugLine(GetWorld(), CameraLocation, TargetPoint, FColor::Red, false, 2.f);

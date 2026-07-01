@@ -15,6 +15,7 @@ public:
 	UPoolManagerComponent();
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	AActor* GetPooledActor();
+	void EnablePooledActor(AActor* Actor, bool bEnable);
 
 protected:
 
@@ -31,6 +32,5 @@ private:
 	TArray<AActor*> PooledActors;
 
 	void InitializePool();
-	void EnablePooledActor(AActor* Actor, bool bEnable);
 	AActor* SpawnPooledActor();
 };

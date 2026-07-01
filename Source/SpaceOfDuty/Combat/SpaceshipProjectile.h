@@ -5,6 +5,8 @@
 #include "SpaceshipProjectile.generated.h"
 
 
+class UPoolManagerComponent;
+
 
 UCLASS()
 class SPACEOFDUTY_API ASpaceshipProjectile : public AActor
@@ -16,7 +18,7 @@ public:
 
 	virtual void Tick(float DeltaTime) override;
 
-	void InitProjectile(const FVector& Direction);
+	void InitProjectile(const FVector& Direction, UPoolManagerComponent* InBulletPool);
 
 
 protected:
@@ -42,4 +44,9 @@ private:
 	float LifeSpan;
 
 	FVector ProjectileDirection;
+
+	UPoolManagerComponent* BulletPool;
+
+	UFUNCTION()
+	void OnProjectileHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 };
