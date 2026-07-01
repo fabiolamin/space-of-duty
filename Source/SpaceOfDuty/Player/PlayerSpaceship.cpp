@@ -190,6 +190,8 @@ void APlayerSpaceship::StartShoot(const FInputActionValue& Value)
 	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Magenta, TEXT("Start Shooting"));
 
 	IsShooting = true;
+
+	Shoot();
 }
 
 void APlayerSpaceship::StopShoot(const FInputActionValue& Value)
@@ -310,7 +312,7 @@ void APlayerSpaceship::Tick(float DeltaTime)
 			SpaceshipMovementInterpSpeed);
 	}
 
-	CheckShooting(DeltaTime);
+	//CheckShooting(DeltaTime);
 	CheckSpaceshipBoosting(DeltaTime);
 
 	UpdateSpaceshipRoll(DeltaTime);
