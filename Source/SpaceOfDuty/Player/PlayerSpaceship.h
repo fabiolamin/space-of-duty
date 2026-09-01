@@ -4,6 +4,7 @@
 #include "GameFramework/Pawn.h"
 #include "Combat/SpaceshipProjectile.h"
 #include "Tools/PoolManagerComponent.h"
+#include <Combat/FEnemyTargetDistanceInfo.h>
 #include "PlayerSpaceship.generated.h"
 
 UCLASS()
@@ -104,20 +105,45 @@ private:
 	USceneComponent* MuzzleRight;
 
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
-	TSubclassOf<ASpaceshipProjectile> ProjectileClass;
+	USceneComponent* MuzzleCenter;
 
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	UPoolManagerComponent* BulletPool;
 
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	UPoolManagerComponent* MissilePool;
+
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	float ShootingInterval;
 
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	float MissileChargeDuration = 3.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	float MissileChargeDepletionDuration = 3.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	float MaxMissileDistance = 100.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	float MinMissileDistance = 30.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	int MaxMissiles = 2;
+
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	float TargetLockRadius = 100.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	float MissileCooldownDuration = 20.0f;
 
 	float TimeSinceLastLookInput = 0.0f;
 	float TimeSinceLastMoveInput = 0.0f;
 	float TimeSinceLastShot = 0.0f;
 	float TimeSinceLastCameraFOVUpdate = 0.0f;
+	float MissileChargeTime = 0.0f;
+	float MissileChargeDepletionTime = 0.0f;
+	float MissileCooldownTime = 0.0f;
 
 	float TargetSpaceshipRoll;
 	float CurrentSpaceshipSpeed;
@@ -129,12 +155,23 @@ private:
 	bool IsAiming = false;
 	bool IsShooting = false;
 
+	bool EnableMissileCharging = true;
+	bool IsChargingMissile = false;
+
 	float TargetSpaceshipFOV;
 	float TargetSpaceshipSpeed;
 	float TargetSpaceshipFOVInterpSpeed;
 
+	UPROPERTY()
+	TArray<FEnemyTargetDistanceInfo> MissileTargets;
 
-	TArray<USceneComponent*> GetMuzzleComponents() const;
+	UPROPERTY()
+	TArray<FEnemyTargetDistanceInfo> DetectedMissileTargets;
+
+	int CurrentMissileCount = 0;
+
+	UPROPERTY()
+	TArray<USceneComponent*> Muzzles;
 
 	void Move(const struct FInputActionValue& Value);
 	void Look(const struct FInputActionValue& Value);
@@ -142,16 +179,34 @@ private:
 	void StartBoost(const struct FInputActionValue& Value);
 	void StopBoost(const struct FInputActionValue& Value);
 
-	void StartAim(const struct FInputActionValue& Value);
-	void StopAim(const struct FInputActionValue& Value);
+	void StartChargingMissile(const struct FInputActionValue& Value);
+	void StopChargingMissile(const struct FInputActionValue& Value);
 
 	void StartShoot(const struct FInputActionValue& Value);
 	void StopShoot(const struct FInputActionValue& Value);
 
 	void CheckShooting(float DeltaTime);
+	void CheckMissileCharging(float DeltaTime);
 	void CheckSpaceshipBoosting(float DeltaTime);
 	void UpdateSpaceshipRoll(float DeltaTime);
 	void UpdateSpaceshipCameraFOV(float DeltaTime);
-	void Shoot();
+	void Shoot(UPoolManagerComponent* BulletPool);
+	void LaunchMissiles(TArray<FEnemyTargetDistanceInfo>& Targets, UPoolManagerComponent* InMissilePool);
+	void ScanEnemyInView(AActor* Target);
+	void ResetMissileTargets();
+	void RemoveMissileTarget(AActor* Target);
 
+	bool IsOnTheRightSide(FVector TargetLocation);
+
+	FVector GetCrosshairDirection();
+
+	//TODO: Temporary properties for enemy management, to be replaced with a more robust system later
+	UPROPERTY()
+	TArray<AActor*> Enemies;
+
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	UMaterialInterface* DefaultEnemyMaterial;
+
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	UMaterialInterface* TargetEnemyMaterial;
 };

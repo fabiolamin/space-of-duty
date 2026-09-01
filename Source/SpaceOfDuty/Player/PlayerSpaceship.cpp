@@ -4,6 +4,8 @@
 #include "Camera/CameraComponent.h" 
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Combat/MissileSpaceshipProjectile.h"
 
 APlayerSpaceship::APlayerSpaceship()
 {
@@ -38,7 +40,11 @@ APlayerSpaceship::APlayerSpaceship()
 	MuzzleRight = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleRight"));
 	MuzzleRight->SetupAttachment(SpaceshipMesh);
 
+	MuzzleCenter = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleCenter"));
+	MuzzleCenter->SetupAttachment(SpaceshipMesh);
+
 	BulletPool = CreateDefaultSubobject<UPoolManagerComponent>(TEXT("BulletPool"));
+	MissilePool = CreateDefaultSubobject<UPoolManagerComponent>(TEXT("MissilePool"));
 }
 
 void APlayerSpaceship::BeginPlay()
@@ -56,14 +62,29 @@ void APlayerSpaceship::BeginPlay()
 	TargetSpaceshipFOVInterpSpeed = SpaceshipMovementInterpSpeed;
 
 	TimeSinceLastShot = ShootingInterval;
-}
 
-TArray<USceneComponent*> APlayerSpaceship::GetMuzzleComponents() const
-{
-	TArray<USceneComponent*> Muzzles;
-	if (MuzzleLeft) Muzzles.Add(MuzzleLeft);
-	if (MuzzleRight) Muzzles.Add(MuzzleRight);
-	return Muzzles;
+	CurrentMissileCount = MaxMissiles;
+
+	Enemies.Empty();
+
+	TArray<AActor*> FoundEnemies;
+	UGameplayStatics::GetAllActorsWithTag(GetWorld(), FName(TEXT("Enemy2")), FoundEnemies);
+
+	for (AActor* EnemyActor : FoundEnemies)
+	{
+		if (EnemyActor)
+		{
+			Enemies.Add(EnemyActor);
+		}
+	}
+
+	if (MuzzleLeft && MuzzleRight)
+	{
+		Muzzles.Add(MuzzleLeft);
+		Muzzles.Add(MuzzleRight);
+	}
+
+	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan, FString::Printf(TEXT("Found %d enemies in the scene."), Enemies.Num()));
 }
 
 void APlayerSpaceship::Move(const FInputActionValue& Value)
@@ -85,7 +106,7 @@ void APlayerSpaceship::Move(const FInputActionValue& Value)
 			SpaceshipMovementInterpSpeed);
 	}
 
-	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Green, MovementVector.ToString());
+	//GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Green, MovementVector.ToString());
 }
 
 void APlayerSpaceship::Look(const FInputActionValue& Value)
@@ -147,7 +168,7 @@ void APlayerSpaceship::StartBoost(const FInputActionValue& Value)
 	TargetSpaceshipFOV = DefaultCameraFOV + BoostCameraDeltaFOV;
 	TargetSpaceshipFOVInterpSpeed = SpaceshipBoostInterpSpeed;
 
-	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Purple, FString::Printf(TEXT("Boosting: %s"), IsBoosting ? TEXT("True") : TEXT("False")));
+	//GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Purple, FString::Printf(TEXT("Boosting: %s"), IsBoosting ? TEXT("True") : TEXT("False")));
 }
 
 void APlayerSpaceship::StopBoost(const FInputActionValue& Value)
@@ -158,45 +179,48 @@ void APlayerSpaceship::StopBoost(const FInputActionValue& Value)
 	TargetSpaceshipFOV = DefaultCameraFOV;
 	TargetSpaceshipFOVInterpSpeed = SpaceshipBoostInterpSpeed;
 
-	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Purple, FString::Printf(TEXT("Boosting: %s"), IsBoosting ? TEXT("True") : TEXT("False")));
+	//GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Purple, FString::Printf(TEXT("Boosting: %s"), IsBoosting ? TEXT("True") : TEXT("False")));
 }
 
-void APlayerSpaceship::StartAim(const FInputActionValue& Value)
+void APlayerSpaceship::StartChargingMissile(const FInputActionValue& Value)
 {
-	if (IsBoosting) return;
-
-	IsAiming = true;
-
-	TargetSpaceshipFOV = SpaceshipAimCameraFOV;
-	TargetSpaceshipFOVInterpSpeed = SpaceshipFOVAimInterpSpeed;
-
-	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Blue, FString::Printf(TEXT("Aiming: %s"), IsAiming ? TEXT("True") : TEXT("False")));
+	if (CurrentMissileCount > 0)
+	{
+		IsChargingMissile = true;
+	}
 }
 
-void APlayerSpaceship::StopAim(const FInputActionValue& Value)
+void APlayerSpaceship::StopChargingMissile(const FInputActionValue& Value)
 {
-	if (!IsAiming) return;
+	if (IsChargingMissile)
+	{
+		MissileTargets.Empty();
 
-	IsAiming = false;
+		int32 LoopCount = FMath::Min(CurrentMissileCount, DetectedMissileTargets.Num());
 
-	TargetSpaceshipFOV = DefaultCameraFOV;
-	TargetSpaceshipFOVInterpSpeed = SpaceshipFOVAimInterpSpeed;
+		for (int32 i = 0; i < LoopCount; ++i)
+		{
+			MissileTargets.Add(DetectedMissileTargets[i]);
+		}
 
-	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Blue, FString::Printf(TEXT("Aiming: %s"), IsAiming ? TEXT("True") : TEXT("False")));
+		LaunchMissiles(MissileTargets, MissilePool);
+	}
+
+	IsChargingMissile = false;
+
+	ResetMissileTargets();
 }
 
 void APlayerSpaceship::StartShoot(const FInputActionValue& Value)
 {
-	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Magenta, TEXT("Start Shooting"));
+	//GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Magenta, TEXT("Start Shooting"));
 
 	IsShooting = true;
-
-	Shoot();
 }
 
 void APlayerSpaceship::StopShoot(const FInputActionValue& Value)
 {
-	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Magenta, TEXT("Stop Shooting"));
+	//GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Magenta, TEXT("Stop Shooting"));
 
 	IsShooting = false;
 }
@@ -209,7 +233,7 @@ void APlayerSpaceship::CheckShooting(float DeltaTime)
 
 		if (TimeSinceLastShot >= ShootingInterval)
 		{
-			Shoot();
+			Shoot(BulletPool);
 
 			TimeSinceLastShot = 0.0f;
 		}
@@ -223,27 +247,75 @@ void APlayerSpaceship::CheckShooting(float DeltaTime)
 	}
 }
 
-void APlayerSpaceship::Shoot()
+void APlayerSpaceship::CheckMissileCharging(float DeltaTime)
 {
-	TArray<USceneComponent*> Muzzles = GetMuzzleComponents();
+	if (IsChargingMissile)
+	{
+		for (AActor* Enemy : Enemies)
+		{
+			if (Enemy)
+			{
+				ScanEnemyInView(Enemy);
+			}
+		}
 
-	if (!ProjectileClass || Muzzles.Num() == 0) return;
+		DetectedMissileTargets.Sort([](const FEnemyTargetDistanceInfo& A, const FEnemyTargetDistanceInfo& B)
+			{
+				return A.Distance < B.Distance;
+			});
 
-	FVector CameraLocation = SpaceshipCamera->GetComponentLocation();
-	FVector CameraForward = SpaceshipCamera->GetForwardVector();
+		int32 LoopCount = FMath::Min(CurrentMissileCount, DetectedMissileTargets.Num());
 
-	float TraceDistance = 100000.f;
+		for (int32 i = 0; i < DetectedMissileTargets.Num(); ++i)
+		{
+			AActor* TargetActor = DetectedMissileTargets[i].TargetActor;
 
-	FVector TraceEnd = CameraLocation + (CameraForward * TraceDistance);
+			if (TargetActor)
+			{
+				UStaticMeshComponent* Mesh = TargetActor->FindComponentByClass<UStaticMeshComponent>();
 
-	FHitResult HitResult;
+				if (i < LoopCount)
+				{
+					if (Mesh && Mesh->GetMaterial(0) != TargetEnemyMaterial)
+					{
+						Mesh->SetMaterial(0, TargetEnemyMaterial);
+					}
+				}
+				else
+				{
+					if (Mesh && Mesh->GetMaterial(0) != DefaultEnemyMaterial)
+					{
+						Mesh->SetMaterial(0, DefaultEnemyMaterial);
+					}
+				}
+			}
+		}
 
-	FCollisionQueryParams QueryParams;
-	QueryParams.AddIgnoredActor(this);
+		MissileChargeTime += DeltaTime;
 
-	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, CameraLocation, TraceEnd, ECC_Visibility, QueryParams);
+		if (MissileChargeTime >= MissileChargeDuration)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Yellow, TEXT("Missile Charged!"));
+			MissileChargeTime = 0.0f;
+			IsChargingMissile = false;
 
-	FVector TargetPoint = bHit ? HitResult.ImpactPoint : TraceEnd;
+			ResetMissileTargets();
+		}
+	}
+	else
+	{
+		if (MissileChargeTime != 0.0f)
+		{
+			MissileChargeTime = 0.0f;
+		}
+	}
+}
+
+void APlayerSpaceship::Shoot(UPoolManagerComponent* InBulletPool)
+{
+	if (Muzzles.Num() == 0) return;
+
+	FVector TargetPoint = GetCrosshairDirection();
 
 	for (USceneComponent* Muzzle : Muzzles)
 	{
@@ -251,7 +323,7 @@ void APlayerSpaceship::Shoot()
 
 		FVector ToMuzzle = (Muzzle->GetComponentLocation() - GetActorLocation()).GetSafeNormal();
 		float Dot = FVector::DotProduct(ToMuzzle, GetActorRightVector());
-		bool IsRight = Dot > 0.1f; 
+		bool IsRight = Dot > 0.1f;
 
 		FActorSpawnParameters Params;
 		Params.Owner = this;
@@ -268,14 +340,14 @@ void APlayerSpaceship::Shoot()
 		FVector ShootDirection = (MuzzleTargetPoint - SpawnLocation).GetSafeNormal();
 		FRotator SpawnRotation = ShootDirection.Rotation();
 
-		AActor* PooledActor = BulletPool->GetPooledActor();
+		AActor* PooledActor = InBulletPool->GetPooledActor();
 		ASpaceshipProjectile* Projectile = Cast<ASpaceshipProjectile>(PooledActor);
 
 		Projectile->SetActorLocationAndRotation(SpawnLocation, SpawnRotation);
 
 		if (Projectile)
 		{
-			Projectile->InitProjectile(ShootDirection, BulletPool);
+			Projectile->FireProjectileInDirection(ShootDirection, InBulletPool);
 		}
 
 		//DrawDebugLine(GetWorld(), CameraLocation, TargetPoint, FColor::Red, false, 2.f);
@@ -294,12 +366,151 @@ void APlayerSpaceship::Shoot()
 	}
 }
 
+void APlayerSpaceship::LaunchMissiles(TArray<FEnemyTargetDistanceInfo>& Targets, UPoolManagerComponent* InMissilePool)
+{
+	int index = 0;
+
+	Targets.Sort([](const FEnemyTargetDistanceInfo& A, const FEnemyTargetDistanceInfo& B)
+		{
+			return A.ScreenPosition.X > B.ScreenPosition.X;
+		});
+
+	FVector TargetPoint = GetCrosshairDirection();
+
+	for (FEnemyTargetDistanceInfo TargetInfo : Targets)
+	{
+		AActor* Target = TargetInfo.TargetActor;
+
+		if (!Target) continue;
+
+		FVector MuzzleLocation = Targets.Num() == 1 ?
+			MuzzleCenter->GetComponentLocation() :
+			Muzzles[index]->GetComponentLocation();
+
+		bool IsRight = IsOnTheRightSide(MuzzleLocation);
+
+		const float MuzzleOffset = 10000;
+		FVector MuzzleOffsetVector = GetActorRightVector() * MuzzleOffset;
+		FVector MuzzleTargetPoint = TargetPoint + (IsRight ? MuzzleOffsetVector : -MuzzleOffsetVector);
+
+		FVector LaunchDirection = ((Targets.Num() == 1 ? TargetPoint : MuzzleTargetPoint) - MuzzleLocation).GetSafeNormal();
+
+		AActor* PooledActor = MissilePool->GetPooledActor();
+
+		AMissileSpaceshipProjectile* Missile = Cast<AMissileSpaceshipProjectile>(PooledActor);
+		Missile->SetActorLocationAndRotation(MuzzleLocation, MuzzleLocation.Rotation());
+
+		if (Missile)
+		{
+			Missile->LaunchMissile(LaunchDirection, CurrentSpaceshipSpeed ,Target, MissilePool);
+
+			CurrentMissileCount = FMath::Clamp(CurrentMissileCount - 1, 0, MaxMissiles);
+		}
+
+		index++;
+		index = index % Muzzles.Num();
+	}
+}
+
+void APlayerSpaceship::ScanEnemyInView(AActor* Target)
+{
+	float DistanceToEnemy = FVector::Distance(GetActorLocation(), Target->GetActorLocation());
+
+	if (DistanceToEnemy >= MinMissileDistance && DistanceToEnemy <= MaxMissileDistance)
+	{
+		APlayerController* MyController = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+
+		FVector2D TargetScreenPosition;
+		bool bOnScreen = MyController->ProjectWorldLocationToScreen(Target->GetActorLocation(), TargetScreenPosition);
+
+		FVector2D ScreenCenter = FVector2D(GEngine->GameViewport->Viewport->GetSizeXY()) * 0.5f;
+
+		float ScreenDistance = FVector2D::Distance(TargetScreenPosition, ScreenCenter);
+
+		if (ScreenDistance <= TargetLockRadius)
+		{
+			if (!DetectedMissileTargets.ContainsByPredicate([Target](const FEnemyTargetDistanceInfo& Info) { return Info.TargetActor == Target; }))
+			{
+				DetectedMissileTargets.Add(FEnemyTargetDistanceInfo(Target, ScreenDistance, TargetScreenPosition));
+			}
+		}
+		else
+		{
+			RemoveMissileTarget(Target);
+		}
+	}
+	else
+	{
+		RemoveMissileTarget(Target);
+	}
+}
+
+void APlayerSpaceship::ResetMissileTargets()
+{
+	for (AActor* Enemy : Enemies)
+	{
+		if (Enemy)
+		{
+			UStaticMeshComponent* Mesh = Enemy->FindComponentByClass<UStaticMeshComponent>();
+			if (Mesh)
+			{
+				Mesh->SetMaterial(0, DefaultEnemyMaterial);
+			}
+		}
+	}
+
+	MissileTargets.Empty();
+	DetectedMissileTargets.Empty();
+}
+
+void APlayerSpaceship::RemoveMissileTarget(AActor* Target)
+{
+	if (Target && DetectedMissileTargets.ContainsByPredicate([Target](const FEnemyTargetDistanceInfo& Info) { return Info.TargetActor == Target; }))
+	{
+		DetectedMissileTargets.RemoveAll([Target](const FEnemyTargetDistanceInfo& Info) { return Info.TargetActor == Target; });
+
+		UStaticMeshComponent* Mesh = Target->FindComponentByClass<UStaticMeshComponent>();
+
+		if (Mesh)
+		{
+			Mesh->SetMaterial(0, DefaultEnemyMaterial);
+		}
+	}
+}
+
+bool APlayerSpaceship::IsOnTheRightSide(FVector TargetLocation)
+{
+	FVector ToTarget = (TargetLocation - GetActorLocation()).GetSafeNormal();
+	float Dot = FVector::DotProduct(ToTarget, GetActorRightVector());
+
+	return Dot > 0.1f;
+}
+
+FVector APlayerSpaceship::GetCrosshairDirection()
+{
+	FVector CameraLocation = SpaceshipCamera->GetComponentLocation();
+	FVector CameraForward = SpaceshipCamera->GetForwardVector();
+
+	float TraceDistance = 100000.f;
+
+	FVector TraceEnd = CameraLocation + (CameraForward * TraceDistance);
+
+	FHitResult HitResult;
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(this);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, CameraLocation, TraceEnd, ECC_Visibility, QueryParams);
+
+	return bHit ? HitResult.ImpactPoint : TraceEnd;
+}
+
 void APlayerSpaceship::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Cyan, FString::Printf(TEXT("Current Speed: %.2f"), CurrentSpaceshipSpeed));
-	GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Orange, FString::Printf(TEXT("Current FOV: %.2f"), SpaceshipCamera->FieldOfView));
+	//GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Cyan, FString::Printf(TEXT("Current Speed: %.2f"), CurrentSpaceshipSpeed));
+	//GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Orange, FString::Printf(TEXT("Current FOV: %.2f"), SpaceshipCamera->FieldOfView));
 
 	AddActorWorldOffset(GetActorForwardVector() * DeltaTime * CurrentSpaceshipSpeed, true);
 
@@ -312,7 +523,8 @@ void APlayerSpaceship::Tick(float DeltaTime)
 			SpaceshipMovementInterpSpeed);
 	}
 
-	//CheckShooting(DeltaTime);
+	CheckShooting(DeltaTime);
+	CheckMissileCharging(DeltaTime);
 	CheckSpaceshipBoosting(DeltaTime);
 
 	UpdateSpaceshipRoll(DeltaTime);
@@ -365,7 +577,7 @@ void APlayerSpaceship::CheckSpaceshipBoosting(float DeltaTime)
 					Intensity
 				);
 
-			GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Red, FString::Printf(TEXT("Camera Shake Intensity: %.2f"), Intensity));
+			//GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Red, FString::Printf(TEXT("Camera Shake Intensity: %.2f"), Intensity));
 		}
 	}
 	else
@@ -403,8 +615,8 @@ void APlayerSpaceship::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		EnhancedInputComponent->BindAction(BoostAction, ETriggerEvent::Started, this, &APlayerSpaceship::StartBoost);
 		EnhancedInputComponent->BindAction(BoostAction, ETriggerEvent::Completed, this, &APlayerSpaceship::StopBoost);
 
-		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Started, this, &APlayerSpaceship::StartAim);
-		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this, &APlayerSpaceship::StopAim);
+		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Started, this, &APlayerSpaceship::StartChargingMissile);
+		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this, &APlayerSpaceship::StopChargingMissile);
 
 		EnhancedInputComponent->BindAction(ShootAction, ETriggerEvent::Started, this, &APlayerSpaceship::StartShoot);
 		EnhancedInputComponent->BindAction(ShootAction, ETriggerEvent::Completed, this, &APlayerSpaceship::StopShoot);
