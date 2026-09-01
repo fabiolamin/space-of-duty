@@ -3,12 +3,10 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Engine/Engine.h"
 #include "Tools/PoolManagerComponent.h"
-#include "SpaceshipProjectile.h"
-
 
 ASpaceshipProjectile::ASpaceshipProjectile()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 
 	SphereComponent = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComponent"));
 	SetRootComponent(Cast<USceneComponent>(SphereComponent));
@@ -45,9 +43,9 @@ void ASpaceshipProjectile::BeginPlay()
 
 void ASpaceshipProjectile::OnProjectileHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	if (BulletPool)
+	if (ProjectilePool)
 	{
-		BulletPool->EnablePooledActor(this, false);
+		ProjectilePool->EnablePooledActor(this, false);
 
 		GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, FString::Printf(TEXT("Projectile hit: %s"), *OtherActor->GetName()));
 	}
@@ -56,17 +54,44 @@ void ASpaceshipProjectile::OnProjectileHit(UPrimitiveComponent* HitComponent, AA
 void ASpaceshipProjectile::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	CheckLifeSpan(DeltaTime);
 }
 
-void ASpaceshipProjectile::InitProjectile(const FVector& Direction, UPoolManagerComponent* InBulletPool)
+void ASpaceshipProjectile::CheckLifeSpan(float DeltaTime)
 {
-	if(BulletPool == nullptr && InBulletPool != nullptr)
+	CurrentLifeSpan += DeltaTime;
+
+	if (CurrentLifeSpan >= LifeSpan)
 	{
-		BulletPool = InBulletPool;
+		if (ProjectilePool)
+		{
+			ProjectilePool->EnablePooledActor(this, false);
+		}
 	}
+}
+
+void ASpaceshipProjectile::FireProjectileInDirection(const FVector& Direction, UPoolManagerComponent* InProjectilePool)
+{
+	FireProjectileInDirection(Direction, ProjectileSpeed, InProjectilePool);
+}
+
+void ASpaceshipProjectile::FireProjectileInDirection(const FVector& Direction, float Speed, UPoolManagerComponent* InProjectilePool)
+{
+	SetProjectilePool(InProjectilePool);
 
 	if (ProjectileMovement)
 	{
-		ProjectileMovement->Velocity = Direction.GetSafeNormal() * ProjectileSpeed;
+		CurrentLifeSpan = 0.f;
+
+		ProjectileMovement->Velocity = Direction.GetSafeNormal() * Speed;
+	}
+}
+
+void ASpaceshipProjectile::SetProjectilePool(UPoolManagerComponent* InProjectilePool)
+{
+	if (ProjectilePool == nullptr && InProjectilePool != nullptr)
+	{
+		ProjectilePool = InProjectilePool;
 	}
 }

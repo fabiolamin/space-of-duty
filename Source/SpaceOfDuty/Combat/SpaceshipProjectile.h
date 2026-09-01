@@ -18,21 +18,15 @@ public:
 
 	virtual void Tick(float DeltaTime) override;
 
-	void InitProjectile(const FVector& Direction, UPoolManagerComponent* InBulletPool);
-
+	void FireProjectileInDirection(const FVector& Direction, UPoolManagerComponent* InBulletPool);
+	void FireProjectileInDirection(const FVector& Direction, float Speed, UPoolManagerComponent* InProjectilePool);
 
 protected:
-	virtual void BeginPlay() override;
-
-private:
 	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = "true"))
 	class USphereComponent* SphereComponent;
 
 	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = "true"))
 	class UStaticMeshComponent* ProjectileMesh;
-
-	UPROPERTY(EditAnywhere, Category = "Movement", meta = (AllowPrivateAccess = "true"))
-	class UProjectileMovementComponent* ProjectileMovement;
 
 	UPROPERTY(EditAnywhere, Category = "Movement", meta = (AllowPrivateAccess = "true"))
 	float ProjectileSpeed;
@@ -41,12 +35,23 @@ private:
 	float Damage;
 
 	UPROPERTY(EditAnywhere, Category = "Damage", meta = (AllowPrivateAccess = "true"))
-	float LifeSpan;
+	float LifeSpan = 5.f;
 
-	FVector ProjectileDirection;
+	UPROPERTY(EditAnywhere, Category = "Movement", meta = (AllowPrivateAccess = "true"))
+	class UProjectileMovementComponent* ProjectileMovement;
 
-	UPoolManagerComponent* BulletPool;
+	UPROPERTY()
+	UPoolManagerComponent* ProjectilePool;
 
 	UFUNCTION()
-	void OnProjectileHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+	virtual void OnProjectileHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
+	void SetProjectilePool(UPoolManagerComponent* InProjectilePool);
+
+	virtual void BeginPlay() override;
+
+private:
+	void CheckLifeSpan(float DeltaTime);
+
+	float CurrentLifeSpan;
 };
