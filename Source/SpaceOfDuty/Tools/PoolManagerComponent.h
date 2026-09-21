@@ -29,7 +29,8 @@ private:
 	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = "true"))
 	TSubclassOf<AActor> PooledActorTemplate;
 
-	TArray<AActor*> PooledActors;
+	UPROPERTY()
+	TArray<TObjectPtr<AActor>> PooledActors;
 
 	void InitializePool();
 	AActor* SpawnPooledActor();

@@ -30,7 +30,7 @@ AActor* UPoolManagerComponent::GetPooledActor()
 {
 	for (AActor* Actor : PooledActors)
 	{
-		if (Actor && Actor->IsHidden())
+		if (IsValid(Actor) && Actor->IsHidden())
 		{
 			Actor->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 
@@ -42,11 +42,18 @@ AActor* UPoolManagerComponent::GetPooledActor()
 
 	AActor* NewActor = SpawnPooledActor();
 
-	NewActor->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+	if (IsValid(NewActor))
+	{
+		NewActor->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
 
-	EnablePooledActor(NewActor, true);
+		EnablePooledActor(NewActor, true);
 
-	return NewActor;
+		return NewActor;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("PoolManagerComponent: Failed to spawn a new pooled actor."));
+
+	return nullptr;
 }
 
 AActor* UPoolManagerComponent::SpawnPooledActor()
@@ -68,7 +75,7 @@ AActor* UPoolManagerComponent::SpawnPooledActor()
 
 		EnablePooledActor(NewActor, false);
 
-		PooledActors.Add(NewActor);
+		PooledActors.Add(TObjectPtr<AActor>(NewActor));
 
 		return NewActor;
 	}
