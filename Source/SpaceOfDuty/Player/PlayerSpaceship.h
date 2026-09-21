@@ -134,8 +134,14 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	float TargetLockRadius = 100.0f;
 
-	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	float MissileCooldownDuration = 20.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	float MissileCooldownTime = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	bool EnableMissileCharging = true;
 
 	float TimeSinceLastLookInput = 0.0f;
 	float TimeSinceLastMoveInput = 0.0f;
@@ -143,7 +149,6 @@ private:
 	float TimeSinceLastCameraFOVUpdate = 0.0f;
 	float MissileChargeTime = 0.0f;
 	float MissileChargeDepletionTime = 0.0f;
-	float MissileCooldownTime = 0.0f;
 
 	float TargetSpaceshipRoll;
 	float CurrentSpaceshipSpeed;
@@ -155,7 +160,6 @@ private:
 	bool IsAiming = false;
 	bool IsShooting = false;
 
-	bool EnableMissileCharging = true;
 	bool IsChargingMissile = false;
 
 	float TargetSpaceshipFOV;

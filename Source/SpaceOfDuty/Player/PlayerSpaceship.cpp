@@ -184,7 +184,7 @@ void APlayerSpaceship::StopBoost(const FInputActionValue& Value)
 
 void APlayerSpaceship::StartChargingMissile(const FInputActionValue& Value)
 {
-	if (CurrentMissileCount > 0)
+	if (EnableMissileCharging)
 	{
 		IsChargingMissile = true;
 	}
@@ -204,11 +204,11 @@ void APlayerSpaceship::StopChargingMissile(const FInputActionValue& Value)
 		}
 
 		LaunchMissiles(MissileTargets, MissilePool);
+
+		IsChargingMissile = false;
+
+		ResetMissileTargets();
 	}
-
-	IsChargingMissile = false;
-
-	ResetMissileTargets();
 }
 
 void APlayerSpaceship::StartShoot(const FInputActionValue& Value)
@@ -249,6 +249,21 @@ void APlayerSpaceship::CheckShooting(float DeltaTime)
 
 void APlayerSpaceship::CheckMissileCharging(float DeltaTime)
 {
+	if (!EnableMissileCharging)
+	{
+		MissileCooldownTime += DeltaTime;
+
+		if (MissileCooldownTime >= MissileCooldownDuration)
+		{
+			MissileCooldownTime = 0.0f;
+			CurrentMissileCount = MaxMissiles;
+
+			EnableMissileCharging = true;
+		}
+
+		return;
+	}
+
 	if (IsChargingMissile)
 	{
 		for (AActor* Enemy : Enemies)
@@ -397,12 +412,14 @@ void APlayerSpaceship::LaunchMissiles(TArray<FEnemyTargetDistanceInfo>& Targets,
 
 		AActor* PooledActor = MissilePool->GetPooledActor();
 
+		if (!PooledActor) continue;
+
 		AMissileSpaceshipProjectile* Missile = Cast<AMissileSpaceshipProjectile>(PooledActor);
 		Missile->SetActorLocationAndRotation(MuzzleLocation, MuzzleLocation.Rotation());
 
 		if (Missile)
 		{
-			Missile->LaunchMissile(LaunchDirection, CurrentSpaceshipSpeed ,Target, MissilePool);
+			Missile->LaunchMissile(LaunchDirection, CurrentSpaceshipSpeed, Target, MissilePool);
 
 			CurrentMissileCount = FMath::Clamp(CurrentMissileCount - 1, 0, MaxMissiles);
 		}
@@ -424,6 +441,14 @@ void APlayerSpaceship::ScanEnemyInView(AActor* Target)
 		bool bOnScreen = MyController->ProjectWorldLocationToScreen(Target->GetActorLocation(), TargetScreenPosition);
 
 		FVector2D ScreenCenter = FVector2D(GEngine->GameViewport->Viewport->GetSizeXY()) * 0.5f;
+
+		if (!bOnScreen || (TargetScreenPosition.X < 0.f || TargetScreenPosition.X > GEngine->GameViewport->Viewport->GetSizeXY().X ||
+			TargetScreenPosition.Y < 0.f || TargetScreenPosition.Y > GEngine->GameViewport->Viewport->GetSizeXY().Y))
+		{
+			RemoveMissileTarget(Target);
+
+			return;
+		}
 
 		float ScreenDistance = FVector2D::Distance(TargetScreenPosition, ScreenCenter);
 
@@ -461,6 +486,8 @@ void APlayerSpaceship::ResetMissileTargets()
 
 	MissileTargets.Empty();
 	DetectedMissileTargets.Empty();
+
+	EnableMissileCharging = false;
 }
 
 void APlayerSpaceship::RemoveMissileTarget(AActor* Target)
