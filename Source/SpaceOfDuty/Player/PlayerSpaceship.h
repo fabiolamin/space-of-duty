@@ -96,6 +96,14 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	float SpaceshipAimCameraFOV = 60.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	float BoostAmount = 1.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	float BoostDepletionRate = 0.35f;
+
+	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	float BoostRechargeRate = 0.2f;
 
 
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
@@ -182,6 +190,8 @@ private:
 
 	void StartBoost(const struct FInputActionValue& Value);
 	void StopBoost(const struct FInputActionValue& Value);
+
+	void ResetSpaceshipBoost();
 
 	void StartChargingMissile(const struct FInputActionValue& Value);
 	void StopChargingMissile(const struct FInputActionValue& Value);

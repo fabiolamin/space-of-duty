@@ -161,6 +161,11 @@ void APlayerSpaceship::Look(const FInputActionValue& Value)
 
 void APlayerSpaceship::StartBoost(const FInputActionValue& Value)
 {
+	if(BoostAmount <= 0.f)
+	{
+		return;
+	}
+
 	IsBoosting = true;
 	IsAiming = false;
 
@@ -173,13 +178,18 @@ void APlayerSpaceship::StartBoost(const FInputActionValue& Value)
 
 void APlayerSpaceship::StopBoost(const FInputActionValue& Value)
 {
+	ResetSpaceshipBoost();
+
+	//GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Purple, FString::Printf(TEXT("Boosting: %s"), IsBoosting ? TEXT("True") : TEXT("False")));
+}
+
+void APlayerSpaceship::ResetSpaceshipBoost()
+{
 	IsBoosting = false;
 
 	TargetSpaceshipSpeed = MaxSpaceshipSpeed;
 	TargetSpaceshipFOV = DefaultCameraFOV;
 	TargetSpaceshipFOVInterpSpeed = SpaceshipBoostInterpSpeed;
-
-	//GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Purple, FString::Printf(TEXT("Boosting: %s"), IsBoosting ? TEXT("True") : TEXT("False")));
 }
 
 void APlayerSpaceship::StartChargingMissile(const FInputActionValue& Value)
@@ -580,6 +590,21 @@ void APlayerSpaceship::CheckSpaceshipBoosting(float DeltaTime)
 {
 	if (IsBoosting)
 	{
+		BoostAmount = FMath::Clamp(BoostAmount - (DeltaTime * BoostDepletionRate), 0.f, 1.f);
+	}
+	else
+	{
+		BoostAmount = FMath::Clamp(BoostAmount + (DeltaTime * BoostRechargeRate), 0.f, 1.f);
+	}
+
+	if (BoostAmount <= 0.f)
+	{
+		ResetSpaceshipBoost();
+	}
+
+	if (IsBoosting)
+	{
+
 		APlayerController* PC = Cast<APlayerController>(GetController());
 
 		if (PC)
