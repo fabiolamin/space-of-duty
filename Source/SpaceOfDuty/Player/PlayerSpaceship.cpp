@@ -1,4 +1,5 @@
-#include "PlayerSpaceship.h"
+#include "Player/PlayerSpaceship.h"
+#include "Components/SpaceshipMovementComponent.h"
 #include <InputTriggers.h>
 #include "EnhancedInputComponent.h" 
 #include "Camera/CameraComponent.h" 
@@ -45,25 +46,13 @@ APlayerSpaceship::APlayerSpaceship()
 
 	BulletPool = CreateDefaultSubobject<UPoolManagerComponent>(TEXT("BulletPool"));
 	MissilePool = CreateDefaultSubobject<UPoolManagerComponent>(TEXT("MissilePool"));
+
+	SpaceshipMovementComponent = CreateDefaultSubobject<USpaceshipMovementComponent>(TEXT("SpaceshipMovementComponent"));
 }
 
 void APlayerSpaceship::BeginPlay()
 {
 	Super::BeginPlay();
-
-	DefaultSpaceshipRoll = SpaceshipMesh->GetRelativeRotation().Roll;
-	DefaultCameraFOV = SpaceshipCamera->FieldOfView;
-
-	CurrentSpaceshipSpeed = MinSpaceshipSpeed;
-
-	TargetSpaceshipRoll = DefaultSpaceshipRoll;
-	TargetSpaceshipFOV = DefaultCameraFOV;
-	TargetSpaceshipSpeed = MaxSpaceshipSpeed;
-	TargetSpaceshipFOVInterpSpeed = SpaceshipMovementInterpSpeed;
-
-	TimeSinceLastShot = ShootingInterval;
-
-	CurrentMissileCount = MaxMissiles;
 
 	Enemies.Empty();
 
@@ -84,100 +73,65 @@ void APlayerSpaceship::BeginPlay()
 		Muzzles.Add(MuzzleRight);
 	}
 
+	if (SpaceshipMovementComponent)
+	{
+		SpaceshipMovementComponent->Initialize(SpaceshipMesh);
+		TargetSpaceshipFOVInterpSpeed = SpaceshipMovementComponent->GetSpaceshipMovementInterpSpeed();
+
+		if (!SpaceshipMovementComponent->OnBoostReset.IsAlreadyBound(this, &APlayerSpaceship::ResetSpaceshipBoost))
+		{
+			SpaceshipMovementComponent->OnBoostReset.AddDynamic(this, &APlayerSpaceship::ResetSpaceshipBoost);
+		}
+	}
+
+	DefaultCameraFOV = SpaceshipCamera->FieldOfView;
+	TargetSpaceshipFOV = DefaultCameraFOV;
+	TimeSinceLastShot = ShootingInterval;
+	CurrentMissileCount = MaxMissiles;
+
 	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan, FString::Printf(TEXT("Found %d enemies in the scene."), Enemies.Num()));
 }
 
 void APlayerSpaceship::Move(const FInputActionValue& Value)
 {
-	FVector2D MovementVector = Value.Get<FVector2D>();
-
-	if (MovementVector.Y < 0.0f)
-	{
-		MovementVector.Y = 0.0f;
-	}
-	else if (!IsBoosting && MovementVector.Y > 0.0f)
-	{
-		TimeSinceLastMoveInput = 0.0f;
-
-		CurrentSpaceshipSpeed = FMath::FInterpTo(
-			CurrentSpaceshipSpeed,
-			MovementVector.Y * MaxSpaceshipSpeed,
-			GetWorld()->GetDeltaSeconds(),
-			SpaceshipMovementInterpSpeed);
-	}
-
 	//GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Green, MovementVector.ToString());
+
+	if (SpaceshipMovementComponent)
+	{
+		SpaceshipMovementComponent->Accelerate(Value.Get<FVector2D>());
+	}
 }
 
 void APlayerSpaceship::Look(const FInputActionValue& Value)
 {
-	const float BaseSensitivity = 0.095f;
-	const float AccelerationStrength = 0.087f;
-	const float MaxSensitivity = 0.12f;
-	const float AccelPower = 1.2f;
-
-	const FVector2D LookVector = Value.Get<FVector2D>();
-
-	float MouseSpeed = LookVector.Size();
-	float Acceleration = FMath::Pow(MouseSpeed, AccelPower) * AccelerationStrength;
-
-	float SensitivityMultiplier = FMath::Clamp(Acceleration, BaseSensitivity, MaxSensitivity);
-
-	const FVector2D NewLookVector = LookVector * SensitivityMultiplier;
-
-	if (Controller != nullptr)
+	if (SpaceshipMovementComponent)
 	{
-		TimeSinceLastLookInput = 0.0f;
-
-		float DeltaTime = GetWorld()->GetDeltaSeconds();
-
-		FRotator NewRot = GetActorRotation();
-
-		NewRot.Yaw += NewLookVector.X;
-		NewRot.Pitch += NewLookVector.Y;
-
-		NewRot.Pitch = FMath::Clamp(NewRot.Pitch, -MaxPitch, MaxPitch);
-
-		SetActorRotation(NewRot);
-
-		const float YawInput = NewLookVector.X;
-
-		const float YawSpeedDegPerSec = (DeltaTime > KINDA_SMALL_NUMBER) ? (YawInput / DeltaTime) : 0.0f;
-
-		const float MaxYawSpeedDegPerSec = 120.0f;
-
-		const float NormalizedYawSpeed = FMath::Clamp(YawSpeedDegPerSec / MaxYawSpeedDegPerSec, -1.0f, 1.0f);
-
-		const float SpeedFactor = (MaxSpaceshipSpeed > KINDA_SMALL_NUMBER) ? FMath::Clamp(CurrentSpaceshipSpeed / MaxSpaceshipSpeed, 0.0f, 1.0f) : 0.0f;
-		const float SpeedRollScale = FMath::Lerp(1.0f, 1.5f, SpeedFactor);
-
-		float TargetRoll = NormalizedYawSpeed * MaxSpaceshipRoll * SpeedRollScale;
-
-		TargetRoll = FMath::Clamp(TargetRoll, -MaxSpaceshipRoll, MaxSpaceshipRoll);
-
-		TargetSpaceshipRoll = TargetRoll;
+		SpaceshipMovementComponent->Look(Value.Get<FVector2D>());
 	}
 }
 
 void APlayerSpaceship::StartBoost(const FInputActionValue& Value)
 {
-	if(BoostAmount <= 0.f)
+	if( !SpaceshipMovementComponent || SpaceshipMovementComponent->GetBoostAmount() <= 0.f)
 	{
 		return;
 	}
 
-	IsBoosting = true;
 	IsAiming = false;
 
-	TargetSpaceshipSpeed = BoostSpaceshipSpeed;
 	TargetSpaceshipFOV = DefaultCameraFOV + BoostCameraDeltaFOV;
-	TargetSpaceshipFOVInterpSpeed = SpaceshipBoostInterpSpeed;
+	TargetSpaceshipFOVInterpSpeed = SpaceshipMovementComponent->GetSpaceshipBoostInterpSpeed();
 
-	//GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Purple, FString::Printf(TEXT("Boosting: %s"), IsBoosting ? TEXT("True") : TEXT("False")));
+	SpaceshipMovementComponent->StartBoost();
 }
 
 void APlayerSpaceship::StopBoost(const FInputActionValue& Value)
 {
+	if(SpaceshipMovementComponent)
+	{
+		SpaceshipMovementComponent->StopBoost();
+	}
+
 	ResetSpaceshipBoost();
 
 	//GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Purple, FString::Printf(TEXT("Boosting: %s"), IsBoosting ? TEXT("True") : TEXT("False")));
@@ -185,11 +139,8 @@ void APlayerSpaceship::StopBoost(const FInputActionValue& Value)
 
 void APlayerSpaceship::ResetSpaceshipBoost()
 {
-	IsBoosting = false;
-
-	TargetSpaceshipSpeed = MaxSpaceshipSpeed;
 	TargetSpaceshipFOV = DefaultCameraFOV;
-	TargetSpaceshipFOVInterpSpeed = SpaceshipBoostInterpSpeed;
+	TargetSpaceshipFOVInterpSpeed = SpaceshipMovementComponent->GetSpaceshipBoostInterpSpeed();
 }
 
 void APlayerSpaceship::StartChargingMissile(const FInputActionValue& Value)
@@ -429,7 +380,7 @@ void APlayerSpaceship::LaunchMissiles(TArray<FEnemyTargetDistanceInfo>& Targets,
 
 		if (Missile)
 		{
-			Missile->LaunchMissile(LaunchDirection, CurrentSpaceshipSpeed, Target, MissilePool);
+			Missile->LaunchMissile(LaunchDirection, SpaceshipMovementComponent->GetCurrentSpaceshipSpeed(), Target, MissilePool);
 
 			CurrentMissileCount = FMath::Clamp(CurrentMissileCount - 1, 0, MaxMissiles);
 		}
@@ -549,31 +500,9 @@ void APlayerSpaceship::Tick(float DeltaTime)
 	//GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Cyan, FString::Printf(TEXT("Current Speed: %.2f"), CurrentSpaceshipSpeed));
 	//GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Orange, FString::Printf(TEXT("Current FOV: %.2f"), SpaceshipCamera->FieldOfView));
 
-	AddActorWorldOffset(GetActorForwardVector() * DeltaTime * CurrentSpaceshipSpeed, true);
-
-	if (!IsBoosting && TimeSinceLastMoveInput >= MaxTimeSinceLastMoveInput)
-	{
-		CurrentSpaceshipSpeed = FMath::FInterpTo(
-			CurrentSpaceshipSpeed,
-			MinSpaceshipSpeed,
-			DeltaTime,
-			SpaceshipMovementInterpSpeed);
-	}
-
 	CheckShooting(DeltaTime);
 	CheckMissileCharging(DeltaTime);
-	CheckSpaceshipBoosting(DeltaTime);
-
-	UpdateSpaceshipRoll(DeltaTime);
 	UpdateSpaceshipCameraFOV(DeltaTime);
-
-	TimeSinceLastLookInput += DeltaTime;
-	TimeSinceLastMoveInput += DeltaTime;
-
-	if (TimeSinceLastLookInput >= MaxTimeSinceLastLookInput)
-	{
-		TargetSpaceshipRoll = DefaultSpaceshipRoll;
-	}
 }
 
 void APlayerSpaceship::UpdateSpaceshipCameraFOV(float DeltaTime)
@@ -588,35 +517,13 @@ void APlayerSpaceship::UpdateSpaceshipCameraFOV(float DeltaTime)
 
 void APlayerSpaceship::CheckSpaceshipBoosting(float DeltaTime)
 {
-	if (IsBoosting)
-	{
-		BoostAmount = FMath::Clamp(BoostAmount - (DeltaTime * BoostDepletionRate), 0.f, 1.f);
-	}
-	else
-	{
-		BoostAmount = FMath::Clamp(BoostAmount + (DeltaTime * BoostRechargeRate), 0.f, 1.f);
-	}
-
-	if (BoostAmount <= 0.f)
-	{
-		ResetSpaceshipBoost();
-	}
-
-	if (IsBoosting)
+	if (SpaceshipMovementComponent && SpaceshipMovementComponent->IsSpaceshipBoosting())
 	{
 
 		APlayerController* PC = Cast<APlayerController>(GetController());
 
 		if (PC)
 		{
-			CurrentSpaceshipSpeed = FMath::FInterpTo(
-				CurrentSpaceshipSpeed,
-				BoostSpaceshipSpeed,
-				DeltaTime,
-				SpaceshipBoostInterpSpeed);
-
-			float Intensity = CurrentSpaceshipSpeed / BoostSpaceshipSpeed;
-
 			if (ActiveCameraShake)
 			{
 				PC->PlayerCameraManager->StopCameraShake(ActiveCameraShake);
@@ -626,7 +533,7 @@ void APlayerSpaceship::CheckSpaceshipBoosting(float DeltaTime)
 			ActiveCameraShake =
 				PC->PlayerCameraManager->StartCameraShake(
 					SpeedCameraShake,
-					Intensity
+					SpaceshipMovementComponent->GetCurrentBoostSpeedRatio()
 				);
 
 			//GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Red, FString::Printf(TEXT("Camera Shake Intensity: %.2f"), Intensity));
@@ -641,17 +548,6 @@ void APlayerSpaceship::CheckSpaceshipBoosting(float DeltaTime)
 			PC->PlayerCameraManager->StopCameraShake(ActiveCameraShake);
 			ActiveCameraShake = nullptr;
 		}
-	}
-}
-
-void APlayerSpaceship::UpdateSpaceshipRoll(float DeltaTime)
-{
-	FRotator CurrentRotation = SpaceshipMesh->GetRelativeRotation();
-
-	if (!FMath::IsNearlyEqual(CurrentRotation.Roll, TargetSpaceshipRoll, 0.1f))
-	{
-		float NewRoll = FMath::FInterpTo(CurrentRotation.Roll, TargetSpaceshipRoll, DeltaTime, SpaceshipRollInterpSpeed);
-		SpaceshipMesh->SetRelativeRotation(FRotator(CurrentRotation.Pitch, CurrentRotation.Yaw, NewRoll));
 	}
 }
 

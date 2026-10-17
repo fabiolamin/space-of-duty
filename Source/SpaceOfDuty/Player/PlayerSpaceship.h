@@ -36,6 +36,8 @@ private:
 	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* SpaceshipSpringArm;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Movement")
+	class USpaceshipMovementComponent* SpaceshipMovementComponent;
 
 
 
@@ -58,53 +60,7 @@ private:
 	class UInputAction* ShootAction;
 
 	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	float MaxTimeSinceLastLookInput = 0.1f;
-
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	float MaxSpaceshipRoll = 25.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	float SpaceshipRollInterpSpeed = 4.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	float MaxTimeSinceLastMoveInput = 0.2f;
-
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	float SpaceshipMovementInterpSpeed = 4.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	float SpaceshipFOVAimInterpSpeed = 5.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	float SpaceshipBoostInterpSpeed = 2.5f;
-
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	float MinSpaceshipSpeed = 10.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	float MaxSpaceshipSpeed = 1000.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	float BoostSpaceshipSpeed = 2000.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	float MaxPitch = 80.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	float BoostCameraDeltaFOV = 20.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	float SpaceshipAimCameraFOV = 60.0f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	float BoostAmount = 1.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	float BoostDepletionRate = 0.35f;
-
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	float BoostRechargeRate = 0.2f;
-
 
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	USceneComponent* MuzzleLeft;
@@ -151,27 +107,14 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	bool EnableMissileCharging = true;
 
-	float TimeSinceLastLookInput = 0.0f;
-	float TimeSinceLastMoveInput = 0.0f;
 	float TimeSinceLastShot = 0.0f;
 	float TimeSinceLastCameraFOVUpdate = 0.0f;
 	float MissileChargeTime = 0.0f;
-	float MissileChargeDepletionTime = 0.0f;
-
-	float TargetSpaceshipRoll;
-	float CurrentSpaceshipSpeed;
-
-	float DefaultSpaceshipRoll = 0.0f;
 	float DefaultCameraFOV;
-
-	bool IsBoosting = false;
 	bool IsAiming = false;
 	bool IsShooting = false;
-
 	bool IsChargingMissile = false;
-
 	float TargetSpaceshipFOV;
-	float TargetSpaceshipSpeed;
 	float TargetSpaceshipFOVInterpSpeed;
 
 	UPROPERTY()
@@ -191,6 +134,7 @@ private:
 	void StartBoost(const struct FInputActionValue& Value);
 	void StopBoost(const struct FInputActionValue& Value);
 
+	UFUNCTION()
 	void ResetSpaceshipBoost();
 
 	void StartChargingMissile(const struct FInputActionValue& Value);
@@ -202,7 +146,6 @@ private:
 	void CheckShooting(float DeltaTime);
 	void CheckMissileCharging(float DeltaTime);
 	void CheckSpaceshipBoosting(float DeltaTime);
-	void UpdateSpaceshipRoll(float DeltaTime);
 	void UpdateSpaceshipCameraFOV(float DeltaTime);
 	void Shoot(UPoolManagerComponent* BulletPool);
 	void LaunchMissiles(TArray<FEnemyTargetDistanceInfo>& Targets, UPoolManagerComponent* InMissilePool);
@@ -222,5 +165,5 @@ private:
 	UMaterialInterface* DefaultEnemyMaterial;
 
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
-	UMaterialInterface* TargetEnemyMaterial;
+	UMaterialInterface* TargetEnemyMaterial;;
 };
