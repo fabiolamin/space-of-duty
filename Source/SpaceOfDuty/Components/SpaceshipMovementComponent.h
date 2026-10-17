@@ -7,6 +7,8 @@
 
 class UStaticMeshComponent;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnBoostReset);
+
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SPACEOFDUTY_API USpaceshipMovementComponent : public UPawnMovementComponent
 {
@@ -17,11 +19,22 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	void Move(float DeltaTime);
 	void Initialize(UStaticMeshComponent* InSpaceshipMesh);
+	void Accelerate(FVector2D MovementVector);
+	void Look(FVector2D LookVector);
+	void StartBoost();
+	void StopBoost();
+	void ResetBoost();
 	bool IsSpaceshipBoosting() const { return IsBoosting; }
 	float GetCurrentBoostSpeedRatio() const { return CurrentBoostSpeedRatio; }
+	float GetSpaceshipMovementInterpSpeed() const { return SpaceshipMovementInterpSpeed; }
+	float GetSpaceshipBoostInterpSpeed() const { return SpaceshipBoostInterpSpeed; }
+	float GetCurrentSpaceshipSpeed() const { return CurrentSpaceshipSpeed; }
 
 	UFUNCTION(BlueprintPure, Category = "Boost")
 	float GetBoostAmount() const { return BoostAmount; }
+
+	UPROPERTY(BlueprintAssignable, Category = "Boost")
+	FOnBoostReset OnBoostReset;
 
 protected:
 	virtual void BeginPlay() override;
@@ -77,13 +90,9 @@ private:
 	float CurrentBoostSpeedRatio = 0.0f;
 	float DefaultSpaceshipRoll = 0.0f;
 	bool IsBoosting = false;
+	bool IsInitialized = false;
 	float TargetSpaceshipSpeed;
 
-	void Accelerate(FVector2D MovementVector);
-	void Look(FVector2D LookVector);
-	void StartBoost();
-	void StopBoost();
-	void ResetBoost();
 	void CheckIdleMovement(float DeltaTime);
 	void CheckSpaceshipBoosting(float DeltaTime);
 	void UpdateSpaceshipRoll(float DeltaTime);

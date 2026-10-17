@@ -9,15 +9,15 @@ USpaceshipMovementComponent::USpaceshipMovementComponent()
 void USpaceshipMovementComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
-	DefaultSpaceshipRoll = SpaceshipMesh->GetRelativeRotation().Roll;
-	CurrentSpaceshipSpeed = MinSpaceshipSpeed;
-	TargetSpaceshipRoll = DefaultSpaceshipRoll;
-	TargetSpaceshipSpeed = MaxSpaceshipSpeed;
 }
 
 void USpaceshipMovementComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
+	if(!IsInitialized)
+	{
+		return;
+	}
+
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	Move(DeltaTime);
@@ -102,10 +102,22 @@ void USpaceshipMovementComponent::UpdateSpaceshipRoll(float DeltaTime)
 void USpaceshipMovementComponent::Initialize(UStaticMeshComponent* InSpaceshipMesh)
 {
 	SpaceshipMesh = InSpaceshipMesh;
+
+	DefaultSpaceshipRoll = SpaceshipMesh->GetRelativeRotation().Roll;
+	CurrentSpaceshipSpeed = MinSpaceshipSpeed;
+	TargetSpaceshipRoll = DefaultSpaceshipRoll;
+	TargetSpaceshipSpeed = MaxSpaceshipSpeed;
+
+	IsInitialized = true;
 }
 
 void USpaceshipMovementComponent::Accelerate(FVector2D MovementVector)
 {
+	if (!IsInitialized)
+	{
+		return;
+	}
+
 	if (MovementVector.Y < 0.0f)
 	{
 		MovementVector.Y = 0.0f;
@@ -124,6 +136,11 @@ void USpaceshipMovementComponent::Accelerate(FVector2D MovementVector)
 
 void USpaceshipMovementComponent::Look(FVector2D LookVector)
 {
+	if (!IsInitialized)
+	{
+		return;
+	}
+
 	const float BaseSensitivity = 0.095f;
 	const float AccelerationStrength = 0.087f;
 	const float MaxSensitivity = 0.12f;
@@ -171,7 +188,7 @@ void USpaceshipMovementComponent::Look(FVector2D LookVector)
 
 void USpaceshipMovementComponent::StartBoost()
 {
-	if (BoostAmount <= 0.f)
+	if (!IsInitialized || BoostAmount <= 0.f)
 	{
 		return;
 	}
@@ -183,13 +200,24 @@ void USpaceshipMovementComponent::StartBoost()
 
 void USpaceshipMovementComponent::StopBoost()
 {
+	if (!IsInitialized)
+	{
+		return;
+	}
+
 	IsBoosting = false;
 	TargetSpaceshipSpeed = MaxSpaceshipSpeed;
 }
 
 void USpaceshipMovementComponent::ResetBoost()
 {
-	IsBoosting = false;
+	if (!IsInitialized)
+	{
+		return;
+	}
 
+	IsBoosting = false;
 	TargetSpaceshipSpeed = MaxSpaceshipSpeed;
+
+	OnBoostReset.Broadcast();
 }
