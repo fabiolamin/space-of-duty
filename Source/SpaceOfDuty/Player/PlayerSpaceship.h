@@ -19,6 +19,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
 
@@ -31,7 +32,7 @@ private:
 	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = "true"), Category = "Camera")
 	TSubclassOf<UCameraShakeBase> SpeedCameraShake;
 
-	UCameraShakeBase* ActiveCameraShake;
+	UCameraShakeBase* ActiveCameraShake = nullptr;
 
 	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* SpaceshipSpringArm;

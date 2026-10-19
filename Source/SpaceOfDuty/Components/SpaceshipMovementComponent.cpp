@@ -194,8 +194,9 @@ void USpaceshipMovementComponent::StartBoost()
 	}
 
 	IsBoosting = true;
-
 	TargetSpaceshipSpeed = BoostSpaceshipSpeed;
+
+	OnBoostStarted.Broadcast();
 }
 
 void USpaceshipMovementComponent::StopBoost()
@@ -205,8 +206,7 @@ void USpaceshipMovementComponent::StopBoost()
 		return;
 	}
 
-	IsBoosting = false;
-	TargetSpaceshipSpeed = MaxSpaceshipSpeed;
+	ResetBoost();
 }
 
 void USpaceshipMovementComponent::ResetBoost()
@@ -216,8 +216,13 @@ void USpaceshipMovementComponent::ResetBoost()
 		return;
 	}
 
+	if (!IsBoosting)
+	{
+		return;
+	}
+
 	IsBoosting = false;
 	TargetSpaceshipSpeed = MaxSpaceshipSpeed;
 
-	OnBoostReset.Broadcast();
+	OnBoostStopped.Broadcast();
 }

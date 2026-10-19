@@ -7,7 +7,8 @@
 
 class UStaticMeshComponent;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnBoostReset);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnBoostStarted);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnBoostStopped);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SPACEOFDUTY_API USpaceshipMovementComponent : public UPawnMovementComponent
@@ -34,7 +35,10 @@ public:
 	float GetBoostAmount() const { return BoostAmount; }
 
 	UPROPERTY(BlueprintAssignable, Category = "Boost")
-	FOnBoostReset OnBoostReset;
+	FOnBoostStarted OnBoostStarted;
+
+	UPROPERTY(BlueprintAssignable, Category = "Boost")
+	FOnBoostStopped OnBoostStopped;
 
 protected:
 	virtual void BeginPlay() override;
