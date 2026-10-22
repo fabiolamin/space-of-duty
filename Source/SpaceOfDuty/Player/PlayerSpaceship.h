@@ -27,11 +27,6 @@ private:
 	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* SpaceshipCamera;
 
-	UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess = "true"), Category = "Camera")
-	TSubclassOf<UCameraShakeBase> SpeedCameraShake;
-
-	UCameraShakeBase* ActiveCameraShake = nullptr;
-
 	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess = "true"))
 	class USpringArmComponent* SpaceshipSpringArm;
 
@@ -43,6 +38,9 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Targeting")
 	class USpaceshipTargetingComponent* SpaceshipTargetingComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Camera")
+	class USpaceshipCameraComponent* SpaceshipCameraComponent;
 
 
 	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
@@ -63,9 +61,6 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	class UInputAction* ShootAction;
 
-	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	float BoostCameraDeltaFOV = 20.0f;
-
 	UPROPERTY(VisibleAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	USceneComponent* MuzzleLeft;
 
@@ -80,12 +75,6 @@ private:
 
 	UPROPERTY(VisibleAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	UPoolManagerComponent* MissilePool;
-
-
-
-	float DefaultCameraFOV;
-	float TargetSpaceshipFOV;
-	float TargetSpaceshipFOVInterpSpeed;
 
 	void Move(const struct FInputActionValue& Value);
 	void Look(const struct FInputActionValue& Value);
@@ -103,5 +92,4 @@ private:
 	void StopShoot(const struct FInputActionValue& Value);
 
 	void CheckSpaceshipBoosting(float DeltaTime);
-	void UpdateSpaceshipCameraFOV(float DeltaTime);
 };

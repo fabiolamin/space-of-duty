@@ -2,6 +2,7 @@
 #include "Components/SpaceshipMovementComponent.h"
 #include "Components/SpaceshipWeaponComponent.h"
 #include "Components/SpaceshipTargetingComponent.h"
+#include "Components/SpaceshipCameraComponent.h"
 #include <InputTriggers.h>
 #include "EnhancedInputComponent.h" 
 #include "Camera/CameraComponent.h" 
@@ -52,6 +53,7 @@ APlayerSpaceship::APlayerSpaceship()
 	SpaceshipMovementComponent = CreateDefaultSubobject<USpaceshipMovementComponent>(TEXT("SpaceshipMovementComponent"));
 	SpaceshipWeaponComponent = CreateDefaultSubobject<USpaceshipWeaponComponent>(TEXT("SpaceshipWeaponComponent"));
 	SpaceshipTargetingComponent = CreateDefaultSubobject<USpaceshipTargetingComponent>(TEXT("SpaceshipTargetingComponent"));
+	SpaceshipCameraComponent = CreateDefaultSubobject<USpaceshipCameraComponent>(TEXT("SpaceshipCameraComponent"));
 }
 
 void APlayerSpaceship::BeginPlay()
@@ -61,7 +63,6 @@ void APlayerSpaceship::BeginPlay()
 	if (SpaceshipMovementComponent)
 	{
 		SpaceshipMovementComponent->Initialize(SpaceshipMesh);
-		TargetSpaceshipFOVInterpSpeed = SpaceshipMovementComponent->GetSpaceshipMovementInterpSpeed();
 		SpaceshipMovementComponent->OnBoostStopped.AddUniqueDynamic(this, &APlayerSpaceship::ResetSpaceshipBoost);
 	}
 
@@ -70,10 +71,10 @@ void APlayerSpaceship::BeginPlay()
 		SpaceshipWeaponComponent->Initialize(SpaceshipCamera, MuzzleLeft, MuzzleRight, MuzzleCenter, BulletPool, MissilePool, SpaceshipMovementComponent, SpaceshipTargetingComponent);
 	}
 
-	DefaultCameraFOV = SpaceshipCamera->FieldOfView;
-	TargetSpaceshipFOV = DefaultCameraFOV;
-	
-	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Cyan, FString::Printf(TEXT("Found %d enemies in the scene."), Enemies.Num()));
+	if (SpaceshipCameraComponent)
+	{
+		SpaceshipCameraComponent->Initialize(SpaceshipCamera);
+	}
 }
 
 void APlayerSpaceship::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -85,20 +86,11 @@ void APlayerSpaceship::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		SpaceshipMovementComponent->OnBoostStopped.RemoveDynamic(this, &APlayerSpaceship::ResetSpaceshipBoost);
 	}
 
-	APlayerController* PC = Cast<APlayerController>(GetController());
-	if (PC && PC->PlayerCameraManager && ActiveCameraShake)
-	{
-		PC->PlayerCameraManager->StopCameraShake(ActiveCameraShake);
-		ActiveCameraShake = nullptr;
-	}
-
 	Super::EndPlay(EndPlayReason);
 }
 
 void APlayerSpaceship::Move(const FInputActionValue& Value)
 {
-	//GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Green, MovementVector.ToString());
-
 	if (SpaceshipMovementComponent)
 	{
 		SpaceshipMovementComponent->Accelerate(Value.Get<FVector2D>());
@@ -115,14 +107,12 @@ void APlayerSpaceship::Look(const FInputActionValue& Value)
 
 void APlayerSpaceship::StartBoost(const FInputActionValue& Value)
 {
-	if( !SpaceshipMovementComponent || SpaceshipMovementComponent->GetBoostAmount() <= 0.f)
+	if( !SpaceshipMovementComponent || SpaceshipMovementComponent->GetBoostAmount() <= 0.f || !SpaceshipCameraComponent)
 	{
 		return;
 	}
 
-	TargetSpaceshipFOV = DefaultCameraFOV + BoostCameraDeltaFOV;
-	TargetSpaceshipFOVInterpSpeed = SpaceshipMovementComponent->GetSpaceshipBoostInterpSpeed();
-
+	SpaceshipCameraComponent->StartBoostEffects(SpaceshipMovementComponent->GetSpaceshipBoostInterpSpeed());
 	SpaceshipMovementComponent->StartBoost();
 }
 
@@ -134,8 +124,6 @@ void APlayerSpaceship::StopBoost(const FInputActionValue& Value)
 	}
 
 	ResetSpaceshipBoost();
-
-	//GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Purple, FString::Printf(TEXT("Boosting: %s"), IsBoosting ? TEXT("True") : TEXT("False")));
 }
 
 void APlayerSpaceship::ResetSpaceshipBoost()
@@ -145,8 +133,10 @@ void APlayerSpaceship::ResetSpaceshipBoost()
 		return;
 	}
 
-	TargetSpaceshipFOV = DefaultCameraFOV;
-	TargetSpaceshipFOVInterpSpeed = SpaceshipMovementComponent->GetSpaceshipBoostInterpSpeed();
+	if (SpaceshipCameraComponent)
+	{
+		SpaceshipCameraComponent->StopBoostEffects(SpaceshipMovementComponent->GetSpaceshipBoostInterpSpeed());
+	}
 }
 
 void APlayerSpaceship::StartChargingMissile(const FInputActionValue& Value)
@@ -190,52 +180,9 @@ void APlayerSpaceship::Tick(float DeltaTime)
 		return;
 	}
 
-	UpdateSpaceshipCameraFOV(DeltaTime);
-}
-
-void APlayerSpaceship::UpdateSpaceshipCameraFOV(float DeltaTime)
-{
-	if (!FMath::IsNearlyEqual(SpaceshipCamera->FieldOfView, TargetSpaceshipFOV, 0.1f))
+	if(SpaceshipMovementComponent)
 	{
-		float NewFOV = FMath::FInterpTo(SpaceshipCamera->FieldOfView, TargetSpaceshipFOV, DeltaTime, TargetSpaceshipFOVInterpSpeed);
-
-		SpaceshipCamera->SetFieldOfView(NewFOV);
-	}
-}
-
-void APlayerSpaceship::CheckSpaceshipBoosting(float DeltaTime)
-{
-	if (SpaceshipMovementComponent && SpaceshipMovementComponent->IsSpaceshipBoosting())
-	{
-
-		APlayerController* PC = Cast<APlayerController>(GetController());
-
-		if (PC)
-		{
-			if (ActiveCameraShake)
-			{
-				PC->PlayerCameraManager->StopCameraShake(ActiveCameraShake);
-				ActiveCameraShake = nullptr;
-			}
-
-			ActiveCameraShake =
-				PC->PlayerCameraManager->StartCameraShake(
-					SpeedCameraShake,
-					SpaceshipMovementComponent->GetCurrentBoostSpeedRatio()
-				);
-
-			//GEngine->AddOnScreenDebugMessage(-1, 0.f, FColor::Red, FString::Printf(TEXT("Camera Shake Intensity: %.2f"), Intensity));
-		}
-	}
-	else
-	{
-		APlayerController* PC = Cast<APlayerController>(GetController());
-
-		if (PC && ActiveCameraShake)
-		{
-			PC->PlayerCameraManager->StopCameraShake(ActiveCameraShake);
-			ActiveCameraShake = nullptr;
-		}
+		SpaceshipCameraComponent->UpdateBoostShake(SpaceshipMovementComponent->IsSpaceshipBoosting(), SpaceshipMovementComponent->GetCurrentBoostSpeedRatio());
 	}
 }
 
