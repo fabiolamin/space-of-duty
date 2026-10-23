@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/ActorComponent.h"
+#include "Components/SceneComponent.h"
 #include "Combat/FEnemyTargetDistanceInfo.h"
 #include "SpaceshipWeaponComponent.generated.h"
 
@@ -12,7 +12,7 @@ class USpaceshipMovementComponent;
 class USpaceshipTargetingComponent;
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class SPACEOFDUTY_API USpaceshipWeaponComponent : public UActorComponent
+class SPACEOFDUTY_API USpaceshipWeaponComponent : public USceneComponent
 {
 	GENERATED_BODY()
 
@@ -20,9 +20,7 @@ public:
 	USpaceshipWeaponComponent();
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	void Initialize(UCameraComponent* InCamera, USceneComponent* InMuzzleLeft, USceneComponent* InMuzzleRight, USceneComponent* InMuzzleCenter,
-		UPoolManagerComponent* InBulletPool, UPoolManagerComponent* InMissilePool, USpaceshipMovementComponent* InMovementComponent,
-		USpaceshipTargetingComponent* InTargetingComponent);
+	void Initialize(UCameraComponent* InCamera, USpaceshipMovementComponent* InMovementComponent, USpaceshipTargetingComponent* InTargetingComponent);
 
 	void StartShoot();
 	void StopShoot();
@@ -42,6 +40,7 @@ public:
 	float GetMissileCooldownTime() const { return MissileCooldownTime; }
 
 protected:
+	virtual void OnRegister() override;
 	virtual void BeginPlay() override;
 
 private:
@@ -66,19 +65,19 @@ private:
 	UPROPERTY()
 	UCameraComponent* SpaceshipCamera;
 
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	USceneComponent* MuzzleLeft;
 
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	USceneComponent* MuzzleRight;
 
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	USceneComponent* MuzzleCenter;
 
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	UPoolManagerComponent* BulletPool;
 
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	UPoolManagerComponent* MissilePool;
 
 	UPROPERTY()

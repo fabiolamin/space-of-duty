@@ -38,20 +38,9 @@ APlayerSpaceship::APlayerSpaceship()
 	SpaceshipMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ShipMesh"));
 	SpaceshipMesh->SetupAttachment(RootComponent);
 
-	MuzzleLeft = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleLeft"));
-	MuzzleLeft->SetupAttachment(SpaceshipMesh);
-
-	MuzzleRight = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleRight"));
-	MuzzleRight->SetupAttachment(SpaceshipMesh);
-
-	MuzzleCenter = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleCenter"));
-	MuzzleCenter->SetupAttachment(SpaceshipMesh);
-
-	BulletPool = CreateDefaultSubobject<UPoolManagerComponent>(TEXT("BulletPool"));
-	MissilePool = CreateDefaultSubobject<UPoolManagerComponent>(TEXT("MissilePool"));
-
 	SpaceshipMovementComponent = CreateDefaultSubobject<USpaceshipMovementComponent>(TEXT("SpaceshipMovementComponent"));
 	SpaceshipWeaponComponent = CreateDefaultSubobject<USpaceshipWeaponComponent>(TEXT("SpaceshipWeaponComponent"));
+	SpaceshipWeaponComponent->SetupAttachment(SpaceshipMesh);
 	SpaceshipTargetingComponent = CreateDefaultSubobject<USpaceshipTargetingComponent>(TEXT("SpaceshipTargetingComponent"));
 	SpaceshipCameraComponent = CreateDefaultSubobject<USpaceshipCameraComponent>(TEXT("SpaceshipCameraComponent"));
 }
@@ -68,7 +57,7 @@ void APlayerSpaceship::BeginPlay()
 
 	if (SpaceshipWeaponComponent && SpaceshipTargetingComponent)
 	{
-		SpaceshipWeaponComponent->Initialize(SpaceshipCamera, MuzzleLeft, MuzzleRight, MuzzleCenter, BulletPool, MissilePool, SpaceshipMovementComponent, SpaceshipTargetingComponent);
+		SpaceshipWeaponComponent->Initialize(SpaceshipCamera, SpaceshipMovementComponent, SpaceshipTargetingComponent);
 	}
 
 	if (SpaceshipCameraComponent)

@@ -11,6 +11,38 @@
 USpaceshipWeaponComponent::USpaceshipWeaponComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+
+	BulletPool = CreateDefaultSubobject<UPoolManagerComponent>(TEXT("BulletPool"));
+	MissilePool = CreateDefaultSubobject<UPoolManagerComponent>(TEXT("MissilePool"));
+
+	MuzzleLeft = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleLeft"));
+	MuzzleLeft->SetupAttachment(this);
+
+	MuzzleRight = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleRight"));
+	MuzzleRight->SetupAttachment(this);
+
+	MuzzleCenter = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleCenter"));
+	MuzzleCenter->SetupAttachment(this);
+}
+
+void USpaceshipWeaponComponent::OnRegister()
+{
+	Super::OnRegister();
+
+	for (USceneComponent* Muzzle : { MuzzleLeft, MuzzleRight, MuzzleCenter })
+	{
+		if (!Muzzle) continue;
+
+		if (Muzzle->GetAttachParent() != this)
+		{
+			Muzzle->AttachToComponent(this, FAttachmentTransformRules::KeepRelativeTransform);
+		}
+
+		if (!Muzzle->IsRegistered())
+		{
+			Muzzle->RegisterComponentWithWorld(GetWorld());
+		}
+	}
 }
 
 void USpaceshipWeaponComponent::BeginPlay()
@@ -21,16 +53,9 @@ void USpaceshipWeaponComponent::BeginPlay()
 	CurrentMissileCount = MaxMissiles;
 }
 
-void USpaceshipWeaponComponent::Initialize(UCameraComponent* InCamera, USceneComponent* InMuzzleLeft, USceneComponent* InMuzzleRight, USceneComponent* InMuzzleCenter,
-	UPoolManagerComponent* InBulletPool, UPoolManagerComponent* InMissilePool, USpaceshipMovementComponent* InMovementComponent,
-	USpaceshipTargetingComponent* InTargetingComponent)
+void USpaceshipWeaponComponent::Initialize(UCameraComponent* InCamera, USpaceshipMovementComponent* InMovementComponent, USpaceshipTargetingComponent* InTargetingComponent)
 {
 	SpaceshipCamera = InCamera;
-	MuzzleLeft = InMuzzleLeft;
-	MuzzleRight = InMuzzleRight;
-	MuzzleCenter = InMuzzleCenter;
-	BulletPool = InBulletPool;
-	MissilePool = InMissilePool;
 	SpaceshipMovementComponent = InMovementComponent;
 	SpaceshipTargetingComponent = InTargetingComponent;
 
