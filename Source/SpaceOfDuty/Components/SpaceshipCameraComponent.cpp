@@ -72,8 +72,18 @@ void USpaceshipCameraComponent::UpdateBoostShake(bool bIsBoosting, float ShakeSc
 		return;
 	}
 
-	StopBoostShake();
-	ActiveCameraShake = PC->PlayerCameraManager->StartCameraShake(SpeedCameraShake, ShakeScale);
+	// Already shaking: nothing to restart.
+	if (IsValid(ActiveCameraShake))
+	{
+		return;
+	}
+
+	if (BoostKickCameraShake)
+	{
+		PC->PlayerCameraManager->StartCameraShake(BoostKickCameraShake, BoostKickShakeIntensity);
+	}
+
+	ActiveCameraShake = PC->PlayerCameraManager->StartCameraShake(SpeedCameraShake, SpeedShakeIntensity);
 }
 
 void USpaceshipCameraComponent::StopBoostShake()

@@ -34,6 +34,15 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Camera", meta = (AllowPrivateAccess = "true"))
 	float BoostCameraDeltaFOV = 20.0f;
 
+	UPROPERTY(EditAnywhere, Category = "Camera|Shake", meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<UCameraShakeBase> BoostKickCameraShake;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Shake", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float SpeedShakeIntensity = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera|Shake", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float BoostKickShakeIntensity = 1.0f;
+
 	UPROPERTY()
 	UCameraComponent* Camera = nullptr;
 
