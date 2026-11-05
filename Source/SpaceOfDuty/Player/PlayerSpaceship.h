@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+#include "InputCoreTypes.h"
 #include "Tools/PoolManagerComponent.h"
 #include "PlayerSpaceship.generated.h"
 
@@ -42,6 +43,20 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Camera")
 	class USpaceshipCameraComponent* SpaceshipCameraComponent;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Health")
+	class USpaceshipHealthComponent* SpaceshipHealthComponent;
+
+	UPROPERTY(EditAnywhere, Category = "Health|Debug", meta = (AllowPrivateAccess = "true"))
+	FKey DebugTakeDamageKey = EKeys::K;
+
+	UPROPERTY(EditAnywhere, Category = "Health|Debug", meta = (AllowPrivateAccess = "true"))
+	FKey DebugHealKey = EKeys::H;
+
+	UPROPERTY(EditAnywhere, Category = "Health|Debug", meta = (AllowPrivateAccess = "true"))
+	float DebugHealthAmount = 10.0f;
+
+	void DebugTakeDamage();
+	void DebugHeal();
 
 	UPROPERTY(EditAnywhere, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	class UInputMappingContext* DefaultMappingContext;

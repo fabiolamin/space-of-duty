@@ -14,7 +14,7 @@ void USpaceshipCameraComponent::Initialize(UCameraComponent* InCamera)
 {
 	Camera = InCamera;
 
-	if (Camera)
+	if (IsValid(Camera))	
 	{
 		DefaultCameraFOV = Camera->FieldOfView;
 		TargetFOV = DefaultCameraFOV;
@@ -49,7 +49,7 @@ void USpaceshipCameraComponent::StopBoostEffects(float InterpSpeed)
 
 void USpaceshipCameraComponent::UpdateCameraFOV(float DeltaTime)
 {
-	if (Camera && !FMath::IsNearlyEqual(Camera->FieldOfView, TargetFOV, 0.1f))
+	if (IsValid(Camera) && !FMath::IsNearlyEqual(Camera->FieldOfView, TargetFOV, 0.1f))
 	{
 		const float NewFOV = FMath::FInterpTo(Camera->FieldOfView, TargetFOV, DeltaTime, TargetFOVInterpSpeed);
 		Camera->SetFieldOfView(NewFOV);
@@ -72,7 +72,6 @@ void USpaceshipCameraComponent::UpdateBoostShake(bool bIsBoosting, float ShakeSc
 		return;
 	}
 
-	// Already shaking: nothing to restart.
 	if (IsValid(ActiveCameraShake))
 	{
 		return;
@@ -88,8 +87,8 @@ void USpaceshipCameraComponent::UpdateBoostShake(bool bIsBoosting, float ShakeSc
 
 void USpaceshipCameraComponent::StopBoostShake()
 {
-	if (!ActiveCameraShake)
-	{
+	if (!IsValid(ActiveCameraShake))
+	{		
 		return;
 	}
 
@@ -99,7 +98,23 @@ void USpaceshipCameraComponent::StopBoostShake()
 	if (PC && PC->PlayerCameraManager)
 	{
 		PC->PlayerCameraManager->StopCameraShake(ActiveCameraShake);
+		ActiveCameraShake = nullptr;
+	}
+}
+
+void USpaceshipCameraComponent::OnPlayerDamaged(float DamagePercentage)
+{
+	if (!StrongDamageCameraShake || DamagePercentage < StrongDamageThreshold)
+	{
+		return;
 	}
 
-	ActiveCameraShake = nullptr;
+	const APawn* OwnerPawn = Cast<APawn>(GetOwner());
+	const APlayerController* PC = OwnerPawn ? Cast<APlayerController>(OwnerPawn->GetController()) : nullptr;
+
+	if (PC && PC->PlayerCameraManager)
+	{
+		const float Scale = StrongDamageShakeIntensity * FMath::GetMappedRangeValueClamped(FVector2D(StrongDamageThreshold, 1.0f), FVector2D(MinDamageShakeScale, MaxDamageShakeScale), DamagePercentage);
+		PC->PlayerCameraManager->StartCameraShake(StrongDamageCameraShake, Scale);
+	}
 }

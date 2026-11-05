@@ -3,6 +3,7 @@
 #include "Components/SpaceshipWeaponComponent.h"
 #include "Components/SpaceshipTargetingComponent.h"
 #include "Components/SpaceshipCameraComponent.h"
+#include "Components/SpaceshipHealthComponent.h"
 #include <InputTriggers.h>
 #include "EnhancedInputComponent.h" 
 #include "Camera/CameraComponent.h" 
@@ -43,6 +44,7 @@ APlayerSpaceship::APlayerSpaceship()
 	SpaceshipWeaponComponent->SetupAttachment(SpaceshipMesh);
 	SpaceshipTargetingComponent = CreateDefaultSubobject<USpaceshipTargetingComponent>(TEXT("SpaceshipTargetingComponent"));
 	SpaceshipCameraComponent = CreateDefaultSubobject<USpaceshipCameraComponent>(TEXT("SpaceshipCameraComponent"));
+	SpaceshipHealthComponent = CreateDefaultSubobject<USpaceshipHealthComponent>(TEXT("SpaceshipHealthComponent"));
 }
 
 void APlayerSpaceship::BeginPlay()
@@ -64,6 +66,11 @@ void APlayerSpaceship::BeginPlay()
 	{
 		SpaceshipCameraComponent->Initialize(SpaceshipCamera);
 	}
+
+	if (SpaceshipHealthComponent && SpaceshipCameraComponent)
+	{
+		SpaceshipHealthComponent->OnTakeDamage.AddUniqueDynamic(SpaceshipCameraComponent, &USpaceshipCameraComponent::OnPlayerDamaged);
+	}
 }
 
 void APlayerSpaceship::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -73,6 +80,11 @@ void APlayerSpaceship::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	if (SpaceshipMovementComponent)
 	{
 		SpaceshipMovementComponent->OnBoostStopped.RemoveDynamic(this, &APlayerSpaceship::ResetSpaceshipBoost);
+	}
+
+	if (SpaceshipHealthComponent && SpaceshipCameraComponent)
+	{
+		SpaceshipHealthComponent->OnTakeDamage.RemoveDynamic(SpaceshipCameraComponent, &USpaceshipCameraComponent::OnPlayerDamaged);
 	}
 
 	Super::EndPlay(EndPlayReason);
@@ -169,7 +181,7 @@ void APlayerSpaceship::Tick(float DeltaTime)
 		return;
 	}
 
-	if(SpaceshipMovementComponent)
+	if (SpaceshipMovementComponent && IsValid(SpaceshipCameraComponent))
 	{
 		SpaceshipCameraComponent->UpdateBoostShake(SpaceshipMovementComponent->IsSpaceshipBoosting(), SpaceshipMovementComponent->GetCurrentBoostSpeedRatio());
 	}
@@ -192,5 +204,25 @@ void APlayerSpaceship::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 		EnhancedInputComponent->BindAction(ShootAction, ETriggerEvent::Started, this, &APlayerSpaceship::StartShoot);
 		EnhancedInputComponent->BindAction(ShootAction, ETriggerEvent::Completed, this, &APlayerSpaceship::StopShoot);
+
+		PlayerInputComponent->BindKey(DebugTakeDamageKey, IE_Pressed, this, &APlayerSpaceship::DebugTakeDamage);
+		PlayerInputComponent->BindKey(DebugHealKey, IE_Pressed, this, &APlayerSpaceship::DebugHeal);
 	}
 }
+
+void APlayerSpaceship::DebugTakeDamage()
+{
+	if (SpaceshipHealthComponent)
+	{
+		SpaceshipHealthComponent->TakeDamage(DebugHealthAmount);
+	}
+}
+
+void APlayerSpaceship::DebugHeal()
+{
+	if (SpaceshipHealthComponent)
+	{
+		SpaceshipHealthComponent->Heal(DebugHealthAmount);
+	}
+}
+
