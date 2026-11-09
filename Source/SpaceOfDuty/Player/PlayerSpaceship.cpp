@@ -11,6 +11,8 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Combat/MissileSpaceshipProjectile.h"
+#include "Blueprint/UserWidget.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
 
 APlayerSpaceship::APlayerSpaceship()
 {
@@ -70,12 +72,15 @@ void APlayerSpaceship::BeginPlay()
 	if (SpaceshipHealthComponent && SpaceshipCameraComponent)
 	{
 		SpaceshipHealthComponent->OnTakeDamage.AddUniqueDynamic(SpaceshipCameraComponent, &USpaceshipCameraComponent::OnPlayerDamaged);
+		SpaceshipHealthComponent->OnDeath.AddUniqueDynamic(this, &APlayerSpaceship::OnPlayerDeath);
 	}
 }
 
 void APlayerSpaceship::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	SetActorTickEnabled(false);
+
+	GetWorldTimerManager().ClearTimer(RespawnTimerHandle);
 
 	if (SpaceshipMovementComponent)
 	{
@@ -85,6 +90,7 @@ void APlayerSpaceship::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	if (SpaceshipHealthComponent && SpaceshipCameraComponent)
 	{
 		SpaceshipHealthComponent->OnTakeDamage.RemoveDynamic(SpaceshipCameraComponent, &USpaceshipCameraComponent::OnPlayerDamaged);
+		SpaceshipHealthComponent->OnDeath.RemoveDynamic(this, &APlayerSpaceship::OnPlayerDeath);
 	}
 
 	Super::EndPlay(EndPlayReason);
@@ -170,6 +176,76 @@ void APlayerSpaceship::StopShoot(const FInputActionValue& Value)
 	{
 		SpaceshipWeaponComponent->StopShoot();
 	}
+}
+
+void APlayerSpaceship::OnPlayerDeath()
+{
+	SetActorHiddenInGame(true);
+	SetActorEnableCollision(false);
+
+	TArray<UUserWidget*> Widgets;
+	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(this, Widgets, UUserWidget::StaticClass(), true);
+
+	for (UUserWidget* Widget : Widgets)
+	{
+		Widget->RemoveFromParent();
+		HiddenWidgets.Add(Widget);
+	}
+
+	SetActorTickEnabled(false);
+
+	for (UActorComponent* Component : GetComponents())
+	{
+		if (Component)
+		{
+			Component->SetComponentTickEnabled(false);
+		}
+	}
+
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	{
+		DisableInput(PlayerController);
+	}
+
+	GetWorldTimerManager().SetTimer(RespawnTimerHandle, this, &APlayerSpaceship::Respawn, RespawnDelay, false);
+}
+
+void APlayerSpaceship::Respawn()
+{
+	SetActorHiddenInGame(false);
+	SetActorEnableCollision(true);
+	SetActorTickEnabled(true);
+
+	for (UUserWidget* Widget : HiddenWidgets)
+	{
+		if (IsValid(Widget))
+		{
+			Widget->AddToViewport();
+		}
+	}
+
+	HiddenWidgets.Empty();
+
+	for (UActorComponent* Component : GetComponents())
+	{
+		if (Component)
+		{
+			Component->SetComponentTickEnabled(true);
+		}
+	}
+
+	if (SpaceshipHealthComponent)
+	{
+		SpaceshipHealthComponent->ResetHealth();
+	}
+
+	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	{
+		EnableInput(PlayerController);
+	}
+
+	OnSpawn.Broadcast();
+	ReceiveOnSpawn();
 }
 
 void APlayerSpaceship::Tick(float DeltaTime)

@@ -6,6 +6,8 @@
 #include "Tools/PoolManagerComponent.h"
 #include "PlayerSpaceship.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSpawnSignature);
+
 UCLASS()
 class SPACEOFDUTY_API APlayerSpaceship : public APawn
 {
@@ -16,11 +18,27 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	void Respawn();
+
+	UPROPERTY(BlueprintAssignable)
+	FOnSpawnSignature OnSpawn;
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "Spawn")
+	void ReceiveOnSpawn();
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
+
+	UPROPERTY(EditAnywhere, Category = "Health", meta = (AllowPrivateAccess = "true", ClampMin = "0.0"))
+	float RespawnDelay = 5.0f;
+
+	FTimerHandle RespawnTimerHandle;
+
+	UPROPERTY()
+	TArray<TObjectPtr<class UUserWidget>> HiddenWidgets;
 
 	UPROPERTY(VisibleAnywhere, meta = (AllowPrivateAccess = "true"))
 	class UStaticMeshComponent* SpaceshipMesh;
@@ -92,4 +110,7 @@ private:
 	void StopShoot(const struct FInputActionValue& Value);
 
 	void CheckSpaceshipBoosting(float DeltaTime);
+
+	UFUNCTION()
+	void OnPlayerDeath();
 };

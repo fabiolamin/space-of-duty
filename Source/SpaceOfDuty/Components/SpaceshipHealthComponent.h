@@ -6,6 +6,7 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnHealthDamagedSignature, float, DamagePercentage);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnHealthHealedSignature, float, HealPercentage);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeathSignature);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class SPACEOFDUTY_API USpaceshipHealthComponent : public UActorComponent
@@ -17,12 +18,14 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	void TakeDamage(float DamageAmount);
 	void Heal(float HealAmount);
+	void ResetHealth();
 
 	UPROPERTY(BlueprintAssignable, Category = "Health")
 	FOnHealthDamagedSignature OnTakeDamage;
 	UPROPERTY(BlueprintAssignable, Category = "Health")
 	FOnHealthHealedSignature OnHeal;
-
+	UPROPERTY(BlueprintAssignable, Category = "Health")
+	FOnDeathSignature OnDeath;
 
 protected:
 	virtual void BeginPlay() override;

@@ -8,6 +8,8 @@ USpaceshipHealthComponent::USpaceshipHealthComponent()
 void USpaceshipHealthComponent::BeginPlay()
 {
 	Super::BeginPlay();
+
+	ResetHealth();
 }
 
 void USpaceshipHealthComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -21,7 +23,18 @@ void USpaceshipHealthComponent::TakeDamage(float DamageAmount)
 	CurrentHealth = FMath::Clamp(CurrentHealth - DamageAmount, 0.0f, MaxHealth);
 	OnTakeDamage.Broadcast(MaxHealth > 0.0f ? FMath::Clamp((PreviousHealth - CurrentHealth) / MaxHealth, 0.0f, 1.0f) : 0.0f);
 
+
+	if (CurrentHealth <= 0.0f)
+	{
+		OnDeath.Broadcast();
+	}
+
 	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Spaceship took damage: %f"), DamageAmount));
+}
+
+void USpaceshipHealthComponent::ResetHealth()
+{
+	CurrentHealth = MaxHealth;
 }
 
 void USpaceshipHealthComponent::Heal(float HealAmount)
