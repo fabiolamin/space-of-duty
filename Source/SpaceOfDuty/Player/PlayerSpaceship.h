@@ -53,7 +53,7 @@ private:
 	class USpaceshipMovementComponent* SpaceshipMovementComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Weapon")
-	class USpaceshipWeaponComponent* SpaceshipWeaponComponent;
+	class USpaceshipWeaponComponent* WeaponComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Targeting")
 	class USpaceshipTargetingComponent* SpaceshipTargetingComponent;

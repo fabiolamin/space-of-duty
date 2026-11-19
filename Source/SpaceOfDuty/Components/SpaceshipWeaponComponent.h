@@ -39,6 +39,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Combat")
 	float GetMissileCooldownTime() const { return MissileCooldownTime; }
 
+	UFUNCTION(BlueprintPure, Category = "Combat")
+	float GetMissileChargeDuration() const { return MissileChargeDuration; }
+
+	UFUNCTION(BlueprintPure, Category = "Combat")
+	float GetMissileChargeTime() const { return MissileChargeTime; }
+
+	UFUNCTION(BlueprintPure, Category = "Combat")
+	bool IsMissileBeingCharged() const { return bIsChargingMissile; }
+
 protected:
 	virtual void OnRegister() override;
 	virtual void BeginPlay() override;
@@ -56,7 +65,7 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	float MissileCooldownDuration = 20.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Transient, VisibleAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	float MissileCooldownTime = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat", meta = (AllowPrivateAccess = "true"))
@@ -65,19 +74,19 @@ private:
 	UPROPERTY()
 	UCameraComponent* SpaceshipCamera;
 
-	UPROPERTY(VisibleAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Instanced, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	USceneComponent* MuzzleLeft;
 
-	UPROPERTY(VisibleAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Instanced, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	USceneComponent* MuzzleRight;
 
-	UPROPERTY(VisibleAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Instanced, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	USceneComponent* MuzzleCenter;
 
-	UPROPERTY(VisibleAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Instanced, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	UPoolManagerComponent* BulletPool;
 
-	UPROPERTY(VisibleAnywhere, Category = "Combat", meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Instanced, Category = "Combat", meta = (AllowPrivateAccess = "true"))
 	UPoolManagerComponent* MissilePool;
 
 	UPROPERTY()

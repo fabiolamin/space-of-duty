@@ -42,8 +42,8 @@ APlayerSpaceship::APlayerSpaceship()
 	SpaceshipMesh->SetupAttachment(RootComponent);
 
 	SpaceshipMovementComponent = CreateDefaultSubobject<USpaceshipMovementComponent>(TEXT("SpaceshipMovementComponent"));
-	SpaceshipWeaponComponent = CreateDefaultSubobject<USpaceshipWeaponComponent>(TEXT("SpaceshipWeaponComponent"));
-	SpaceshipWeaponComponent->SetupAttachment(SpaceshipMesh);
+	WeaponComponent = CreateDefaultSubobject<USpaceshipWeaponComponent>(TEXT("WeaponComponent"));
+	WeaponComponent->SetupAttachment(SpaceshipMesh);
 	SpaceshipTargetingComponent = CreateDefaultSubobject<USpaceshipTargetingComponent>(TEXT("SpaceshipTargetingComponent"));
 	SpaceshipCameraComponent = CreateDefaultSubobject<USpaceshipCameraComponent>(TEXT("SpaceshipCameraComponent"));
 	SpaceshipHealthComponent = CreateDefaultSubobject<USpaceshipHealthComponent>(TEXT("SpaceshipHealthComponent"));
@@ -59,9 +59,9 @@ void APlayerSpaceship::BeginPlay()
 		SpaceshipMovementComponent->OnBoostStopped.AddUniqueDynamic(this, &APlayerSpaceship::ResetSpaceshipBoost);
 	}
 
-	if (SpaceshipWeaponComponent && SpaceshipTargetingComponent)
+	if (WeaponComponent && SpaceshipTargetingComponent)
 	{
-		SpaceshipWeaponComponent->Initialize(SpaceshipCamera, SpaceshipMovementComponent, SpaceshipTargetingComponent);
+		WeaponComponent->Initialize(SpaceshipCamera, SpaceshipMovementComponent, SpaceshipTargetingComponent);
 	}
 
 	if (SpaceshipCameraComponent)
@@ -148,33 +148,33 @@ void APlayerSpaceship::ResetSpaceshipBoost()
 
 void APlayerSpaceship::StartChargingMissile(const FInputActionValue& Value)
 {
-	if (SpaceshipWeaponComponent)
+	if (WeaponComponent)
 	{
-		SpaceshipWeaponComponent->StartChargingMissile();
+		WeaponComponent->StartChargingMissile();
 	}
 }
 
 void APlayerSpaceship::StopChargingMissile(const FInputActionValue& Value)
 {
-	if (SpaceshipWeaponComponent)
+	if (WeaponComponent)
 	{
-		SpaceshipWeaponComponent->StopChargingMissile();
+		WeaponComponent->StopChargingMissile();
 	}
 }
 
 void APlayerSpaceship::StartShoot(const FInputActionValue& Value)
 {
-	if (SpaceshipWeaponComponent)
+	if (WeaponComponent)
 	{
-		SpaceshipWeaponComponent->StartShoot();
+		WeaponComponent->StartShoot();
 	}
 }
 
 void APlayerSpaceship::StopShoot(const FInputActionValue& Value)
 {
-	if (SpaceshipWeaponComponent)
+	if (WeaponComponent)
 	{
-		SpaceshipWeaponComponent->StopShoot();
+		WeaponComponent->StopShoot();
 	}
 }
 
